@@ -24,6 +24,36 @@ func newGraph(nodes TestMap) *FKeysGraph[string] {
 	return &ret
 }
 
+func TestCount(t *testing.T) {
+	t.Run("Test count", func(t *testing.T) {
+		graph := *newGraph(TestMap{
+			"A": {"B"},
+			"B": {"C"},
+			"C": {},
+		})
+		if result := graph.getNodeCount(); result != 3 {
+			t.Errorf("getNodeCount(%v) = %v; want %v", graph, result, 3)
+		}
+		if result := graph.getGraphSize(); result != 3 {
+			t.Errorf("getGraphSize(%v) = %v; want %v", graph, result, 3)
+		}
+	})
+}
+
+func TestAddNodeError(t *testing.T) {
+	t.Run("Test AddNode error", func(t *testing.T) {
+		graph := *newGraph(TestMap{
+			"A": {"B"},
+			"B": {"C"},
+			"C": {},
+		})
+		_, err := graph.addNode("A")
+		if err == nil {
+			t.Errorf("addNode() was supposed to return an error")
+		}
+	})
+}
+
 func TestIsAcyclic(t *testing.T) {
 	tests := []struct {
 		name           string

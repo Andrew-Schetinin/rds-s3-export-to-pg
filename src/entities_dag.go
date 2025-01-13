@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go.uber.org/zap"
 	"sort"
-	"strings"
 )
 
 // ChildrenMap the map of child nodes in DAG, identified by names
@@ -166,6 +165,8 @@ func (g *FKeysGraph[T]) topologicalSort() []string {
 		}
 	}
 	if len(visited) != len(stack) {
+		// I cannot trigger this condition, so cannot cover this code - it just never happens practically.
+		// I do not want to remove this test anyway.
 		logger.Error("topologicalSort(): FATAL: The number of visited nodes is not equal to the number of stack elements",
 			zap.Int("len(visited)", len(visited)), zap.Int("len(stack)", len(stack)))
 		logger.Debug("visited: ", zap.Any("visited", visited))
@@ -263,43 +264,43 @@ func (g *FKeysGraph[T]) dfs(index int, visited map[int]struct{}, recStack []int)
 	return ret
 }
 
-// compareTables determines the relative ordering of two tables based on their presence in the graph and dependencies.
-// Returns -1 if `first` should come before `second`, 1 if `second` should come before `first`, or 0 if they are equal.
-func (g *FKeysGraph[T]) compareTables(first string, second string) int {
-	// If table is not in fkMap, it should appear first
-	firstIndex := g.graph[first]
-	secondIndex := g.graph[second]
-
-	// If both are absent in fkMap, sort alphabetically
-	if firstIndex <= 0 && secondIndex <= 0 {
-		return strings.Compare(first, second)
-	}
-
-	// If only one of them is in fkMap, the one that's NOT in fkMap should come first
-	if firstIndex <= 0 {
-		return 1
-	}
-	if secondIndex <= 0 {
-		return -1
-	}
-
-	// If both are in fkMap, check if one depends on the other
-	_, firstDependsOnSecond := g.nodes[firstIndex].children[second]
-	_, secondDependsOnFirst := g.nodes[secondIndex].children[first]
-
-	// Table i should come after table j if table i depends on table j
-	if firstDependsOnSecond {
-		return 1
-	}
-
-	// Table j should come after table i if table j depends on table i
-	if secondDependsOnFirst {
-		return -1
-	}
-
-	// If neither depends on the other, keep their original order
-	return strings.Compare(first, second)
-}
+//// compareTables determines the relative ordering of two tables based on their presence in the graph and dependencies.
+//// Returns -1 if `first` should come before `second`, 1 if `second` should come before `first`, or 0 if they are equal.
+//func (g *FKeysGraph[T]) compareTables(first string, second string) int {
+//	// If table is not in fkMap, it should appear first
+//	firstIndex := g.graph[first]
+//	secondIndex := g.graph[second]
+//
+//	// If both are absent in fkMap, sort alphabetically
+//	if firstIndex <= 0 && secondIndex <= 0 {
+//		return strings.Compare(first, second)
+//	}
+//
+//	// If only one of them is in fkMap, the one that's NOT in fkMap should come first
+//	if firstIndex <= 0 {
+//		return 1
+//	}
+//	if secondIndex <= 0 {
+//		return -1
+//	}
+//
+//	// If both are in fkMap, check if one depends on the other
+//	_, firstDependsOnSecond := g.nodes[firstIndex].children[second]
+//	_, secondDependsOnFirst := g.nodes[secondIndex].children[first]
+//
+//	// Table i should come after table j if table i depends on table j
+//	if firstDependsOnSecond {
+//		return 1
+//	}
+//
+//	// Table j should come after table i if table j depends on table i
+//	if secondDependsOnFirst {
+//		return -1
+//	}
+//
+//	// If neither depends on the other, keep their original order
+//	return strings.Compare(first, second)
+//}
 
 // calculateInDegree initialize in-degree values for all nodes to detect root nodes in the graph
 func (g *FKeysGraph[T]) calculateInDegree() {
