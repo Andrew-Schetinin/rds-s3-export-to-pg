@@ -19,7 +19,7 @@ type Source interface {
 	getSnapshotName() string
 
 	// getFile returns a file structure, matching the provided relative localPath.
-	// The returned file structure points to a local file (with an aboslute localPath),
+	// The returned file structure points to a local file (with an absolute localPath),
 	// where the file may be downloaded from a remote storage and kept temporarily
 	// for duration of the program execution only.
 	getFile(relativePath string) File

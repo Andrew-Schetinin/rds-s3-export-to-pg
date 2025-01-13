@@ -5,19 +5,42 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/bcicen/jstream"
 	"go.uber.org/zap"
 )
 
+// ColumnInfo represents metadata about a database column, including its name, type, and precision constraints.
+type ColumnInfo struct {
+	// ColumnName defines the name of the database column in the source table.
+	ColumnName string `json:"columnName"`
+
+	// OriginalType indicates the original PostgreSQL data type of the column as defined in the source database.
+	OriginalType string `json:"originalType"`
+
+	// ExpectedExportedType specifies the type in Parquet file.
+	ExpectedExportedType string `json:"expectedExportedType"`
+
+	// OriginalCharMaxLength specifies the maximum character length for the column as defined in the source database.
+	OriginalCharMaxLength int `json:"originalCharMaxLength"`
+
+	// OriginalNumPrecision defines the numeric precision of the column as specified in the source database.
+	OriginalNumPrecision int `json:"originalNumPrecision"`
+
+	// OriginalDateTimePrecision defines the precision of datetime values in the source database for this column.
+	OriginalDateTimePrecision int `json:"originalDateTimePrecision"`
+}
+
 type ParquetFileInfo struct {
 	TableName string
 	FileName  string
+	Columns   []ColumnInfo
 }
 
-func NewParquetFileInfo(tableName, fileName string) ParquetFileInfo {
-	return ParquetFileInfo{TableName: tableName, FileName: fileName}
+func NewParquetFileInfo(tableName, fileName string, columns []ColumnInfo) ParquetFileInfo {
+	return ParquetFileInfo{TableName: tableName, FileName: fileName, Columns: columns}
 }
 
 type ParquetFileInfoList []ParquetFileInfo
@@ -161,13 +184,18 @@ func (r *SourceReader) processFile(relativePath string, tableMap *map[string]boo
 			columnCount := len(originalTypeMappingsMap)
 
 			// the table name is something like "database_name.schema_name.table_name" - remove the database name
+			columns, err := r.readColumns(originalTypeMappingsMap)
+			if err != nil {
+				return nil, fmt.Errorf("processFile(): error reading columns from the file '%s': %w",
+					file.Name(), err)
+			}
 
-			targetStr, err := removeDatabaseName(targetStr)
+			targetStr, err = removeDatabaseName(targetStr)
 			if err != nil {
 				return nil, fmt.Errorf("processFile(): error parsing the file '%s': %w", file.Name(), err)
 			}
 
-			ret = append(ret, NewParquetFileInfo(targetStr, fileInfo.localPath))
+			ret = append(ret, NewParquetFileInfo(targetStr, fileInfo.localPath, columns))
 
 			exists, ignore := r.tableFound(targetStr, tableMap)
 			if exists {
@@ -195,6 +223,56 @@ func (r *SourceReader) processFile(relativePath string, tableMap *map[string]boo
 		return nil, fmt.Errorf("error parsing the file '%s': %d errors found", file.Name(), errorCount)
 	}
 	return ret, nil
+}
+
+func (r *SourceReader) readColumns(originalTypeMappingsMap []interface{}) (ret []ColumnInfo, err error) {
+	columns := make([]ColumnInfo, 0)
+
+	for index, item := range originalTypeMappingsMap {
+		columnMap, ok := item.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf(
+				"readColumns(): element [%d] in 'originalTypeMappings' is not a map", index)
+		}
+
+		columnInfo := ColumnInfo{}
+		columnInfo.ColumnName, err = r.readField(columnMap, index, "columnName")
+		if err != nil {
+			return nil, err
+		}
+		columnInfo.OriginalType, err = r.readField(columnMap, index, "originalType")
+		if err != nil {
+			return nil, err
+		}
+		columnInfo.ExpectedExportedType, err = r.readField(columnMap, index, "expectedExportedType")
+		if err != nil {
+			return nil, err
+		}
+		columnInfo.OriginalCharMaxLength, err = r.readIntField(columnMap, index, "originalCharMaxLength")
+		if err != nil {
+			return nil, err
+		}
+		columnInfo.OriginalNumPrecision, err = r.readIntField(columnMap, index, "originalNumPrecision")
+		if err != nil {
+			return nil, err
+		}
+		columnInfo.OriginalDateTimePrecision, err = r.readIntField(columnMap, index, "originalDateTimePrecision")
+		if err != nil {
+			return nil, err
+		}
+
+		columns = append(columns, columnInfo)
+	}
+
+	return columns, nil
+}
+
+func (r *SourceReader) readField(columnMap map[string]interface{}, index int, fieldName string) (val string, err error) {
+	if val, exists := columnMap[fieldName].(string); exists {
+		return val, nil
+	}
+	return "", fmt.Errorf(
+		"readField(): '%s' is missing or not a string in a column in the element [%d]", fieldName, index)
 }
 
 // tableFound checks if a table exists in the provided table map and determines whether missing tables should be ignored.
@@ -303,6 +381,25 @@ func (r *SourceReader) validateExportInfo() (err error) {
 	}
 
 	return
+}
+
+func (r *SourceReader) readIntField(columnMap map[string]interface{}, index int, fieldName string) (int, error) {
+	val, exists := columnMap[fieldName]
+	if !exists {
+		return 0, fmt.Errorf(
+			"readIntField(): '%s' is missing or not a string in a column in the element [%d]", fieldName, index)
+	}
+	if str, ok := val.(string); ok {
+		return strconv.Atoi(str)
+	}
+	if i, ok := val.(int); ok {
+		return i, nil
+	}
+	if f, ok := val.(float64); ok {
+		return int(f), nil
+	}
+	return 0, fmt.Errorf(
+		"readIntField(): cannot convert '%s' field to an integer in the element [%d]", fieldName, index)
 }
 
 // removeDatabaseName removes the database name from a fully-qualified table name in the format "database.schema.table".

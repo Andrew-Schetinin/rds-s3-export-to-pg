@@ -88,4 +88,5 @@ func main() {
 	}
 	logger.Info("Parsed Parquet files", zap.Int("count", len(parquetTables)),
 		zap.Duration("time", time.Since(startTime)))
+
 }
