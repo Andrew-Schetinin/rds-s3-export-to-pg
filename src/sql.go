@@ -47,8 +47,6 @@ const listFKeys = `
 
 const selectTableSize = "SELECT COUNT(*) FROM %s"
 
-const copyTable = "COPY %s(%s) FROM STDIN WITH CSV HEADER, FREEZE true;"
-
 const disableTriggers = "ALTER TABLE %s DISABLE TRIGGER ALL;"
 
 const enableTriggers = "ALTER TABLE %s ENABLE TRIGGER ALL;"
