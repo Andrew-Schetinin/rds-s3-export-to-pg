@@ -30,9 +30,25 @@ type DatabaseWriter struct {
 	//connStr := "postgres://andrews:asd@localhost:5432/tms_test?sslmode=disable"
 	ConnectionString string
 	db               *pgx.Conn //*sql.DB
+	regExPrimary     *regexp.Regexp
+	regExIdx         *regexp.Regexp
+	regExCon         *regexp.Regexp
 }
 
 func NewDatabaseWriter(host string, port int, name string, user string, password string, mode bool) DatabaseWriter {
+	// Compile the regular expression
+	rePrimary, err := regexp.Compile(".*PRIMARY KEY.*")
+	if err != nil {
+		logger.Error("ERROR: ", zap.Error(err))
+	}
+	reIdx, err := regexp.Compile(".*UNIQUE INDEX.*(id).*")
+	if err != nil {
+		logger.Error("ERROR: ", zap.Error(err))
+	}
+	reCon, err := regexp.Compile(".*UNIQUE.*")
+	if err != nil {
+		logger.Error("ERROR: ", zap.Error(err))
+	}
 	return DatabaseWriter{
 		ConnectionString: fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
 			user,
@@ -42,6 +58,9 @@ func NewDatabaseWriter(host string, port int, name string, user string, password
 			name,
 			map[bool]string{true: "require", false: "disable"}[mode],
 		),
+		regExPrimary: rePrimary,
+		regExIdx:     reIdx,
+		regExCon:     reCon,
 	}
 }
 
@@ -78,12 +97,13 @@ func (w *DatabaseWriter) close() {
 	}
 }
 
-func (w *DatabaseWriter) writeTable(tableName string) {
+func (w *DatabaseWriter) getIndexList(tableName string) (ret []IndexInfo, err error) {
 	//const tableName = "entity_type"
 	// Query for existing indexes on a specific table
 	rows, err := w.db.Query(context.Background(), findIndexes, tableName)
 	if err != nil {
 		logger.Error("ERROR: ", zap.Error(err))
+		return nil, err
 	}
 	defer func(rows pgx.Rows) {
 		rows.Close()
@@ -97,6 +117,7 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 		err = rows.Scan(&indexName, &indexDef)
 		if err != nil {
 			logger.Error("ERROR: ", zap.Error(err))
+			return nil, err
 		}
 
 		indexInfo := IndexInfo{
@@ -109,22 +130,28 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 
 	if err = rows.Err(); err != nil {
 		logger.Error("ERROR: ", zap.Error(err))
+		return nil, err
 	}
 
-	rows, err = w.db.Query(context.Background(), findConstrains, tableName)
+	return indexInfos, nil
+}
+
+func (w *DatabaseWriter) getConstraintList(tableName string) (ret []ConstraintInfo, err error) {
+	rows, err := w.db.Query(context.Background(), findConstrains, tableName)
 	if err != nil {
 		logger.Error("ERROR: ", zap.Error(err))
+		return nil, err
 	}
 	defer func(rows pgx.Rows) {
 		rows.Close()
 	}(rows)
-
 	var constraints []ConstraintInfo
 	for rows.Next() {
 		var name, definition string
 		err = rows.Scan(&name, &definition)
 		if err != nil {
 			logger.Error("ERROR: ", zap.Error(err))
+			return nil, err
 		}
 
 		constraints = append(constraints, ConstraintInfo{
@@ -134,74 +161,74 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 	}
 	if err := rows.Err(); err != nil {
 		logger.Error("ERROR: ", zap.Error(err))
+		return nil, err
 	}
+	return constraints, nil
+}
 
+func (w *DatabaseWriter) writeTable(source Source, mapper *FieldMapper) (ret int, err error) {
+	tableName := mapper.Info.TableName
+	indexInfos, err := w.getIndexList(tableName)
+	if err != nil {
+		return
+	}
+	constraints, err := w.getConstraintList(tableName)
+	if err != nil {
+		return
+	}
 	// Begin a transaction
 	tx, err := w.db.Begin(context.Background())
 	if err != nil {
-		logger.Error("ERROR: ", zap.Error(err))
-	}
-
-	defer func() {
-		if p := recover(); p != nil {
-			// Rollback on panic
-			err := tx.Rollback(context.Background())
-			if err != nil {
-				logger.Error("ERROR: ", zap.Error(err))
-			}
-			logger.Error("ERROR: ", zap.Any("panic", p))
-		} else if err := tx.Commit(context.Background()); err != nil {
-			logger.Error("ERROR: ", zap.Error(err))
-		}
-	}()
-
-	// Compile the regular expression
-	re, err := regexp.Compile(".*PRIMARY KEY.*")
-	if err != nil {
-		logger.Error("ERROR: ", zap.Error(err))
 		return
 	}
-	reIdx, err := regexp.Compile(".*UNIQUE INDEX.*(id).*")
+	defer closeTransactionInPanic(tx)
+
+	rows, err := w.db.Query(context.Background(), deferConstraints)
 	if err != nil {
-		logger.Error("ERROR: ", zap.Error(err))
+		_ = tx.Rollback(context.Background())
 		return
 	}
-	reCon, err := regexp.Compile(".*UNIQUE.*")
+	logger.Debug("deferConstraints query executed", zap.Any("rows", rows))
+	rows.Close()
+
+	rows, err = w.db.Query(context.Background(), fmt.Sprintf(disableTriggers, tableName))
 	if err != nil {
-		logger.Error("ERROR: ", zap.Error(err))
+		_ = tx.Rollback(context.Background())
+		return
+	}
+	logger.Debug("deferConstraints query executed", zap.Any("rows", rows))
+	rows.Close()
+
+	err = w.dropIndexes(tableName, constraints, err, tx, indexInfos)
+	if err != nil {
+		_ = tx.Rollback(context.Background())
+		return
+	}
+	ret, err = w.writeTableData(source, mapper)
+	if err != nil {
+		_ = tx.Rollback(context.Background())
+		return
+	}
+	err = w.restoreIndexes(tableName, indexInfos, err, tx, constraints)
+	if err != nil {
+		_ = tx.Rollback(context.Background())
 		return
 	}
 
-	for _, constraint := range constraints {
-		var dropSql = fmt.Sprintf(dropConstraint, tableName, constraint.Name)
-		if re.MatchString(constraint.Command) {
-			logger.Debug("Skipping the primary key constraint: ", zap.String("command", constraint.Command))
-		} else {
-			logger.Info(dropSql)
-			_, err = tx.Exec(context.Background(), dropSql)
-			if err != nil {
-				logger.Error("ERROR: ", zap.Error(err), zap.String("command", constraint.Command))
-				break
-			}
-		}
+	rows, err = w.db.Query(context.Background(), fmt.Sprintf(enableTriggers, tableName))
+	if err != nil {
+		_ = tx.Rollback(context.Background())
+		return
 	}
+	logger.Debug("deferConstraints query executed", zap.Any("rows", rows))
 
+	err = tx.Commit(context.Background())
+	return
+}
+
+func (w *DatabaseWriter) restoreIndexes(tableName string, indexInfos []IndexInfo, err error, tx pgx.Tx, constraints []ConstraintInfo) error {
 	for _, indexInfo := range indexInfos {
-		var dropSql = fmt.Sprintf(dropIndex, indexInfo.Name)
-		if reIdx.MatchString(indexInfo.Def) {
-			logger.Debug("Skipping the unique index: ", zap.String("command", indexInfo.Def))
-		} else {
-			logger.Info(dropSql)
-			_, err = tx.Exec(context.Background(), dropSql)
-			if err != nil {
-				logger.Error("ERROR: ", zap.Error(err), zap.String("command", indexInfo.Def))
-				break
-			}
-		}
-	}
-
-	for _, indexInfo := range indexInfos {
-		if reIdx.MatchString(indexInfo.Def) {
+		if w.regExIdx.MatchString(indexInfo.Def) {
 			logger.Debug("Skipping the unique index: ", zap.String("command", indexInfo.Def))
 		} else {
 			logger.Info(indexInfo.Def)
@@ -215,7 +242,7 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 
 	for _, constraint := range constraints {
 		var createSql = fmt.Sprintf(addConstraint, tableName, constraint.Name, constraint.Command)
-		if re.MatchString(createSql) || reCon.MatchString(constraint.Command) {
+		if w.regExPrimary.MatchString(createSql) || w.regExCon.MatchString(constraint.Command) {
 			logger.Debug("Skipping the primary key constraint: ", zap.String("command", constraint.Command))
 		} else {
 			logger.Info(createSql)
@@ -226,11 +253,48 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 			}
 		}
 	}
+	return err
+}
 
-	logger.Info("Rolling back the transaction")
-	err = tx.Rollback(context.Background())
-	if err != nil {
-		logger.Error("ERROR: ", zap.Error(err))
+func (w *DatabaseWriter) dropIndexes(tableName string, constraints []ConstraintInfo, err error, tx pgx.Tx, indexInfos []IndexInfo) error {
+	for _, constraint := range constraints {
+		var dropSql = fmt.Sprintf(dropConstraint, tableName, constraint.Name)
+		if w.regExPrimary.MatchString(constraint.Command) {
+			logger.Debug("Skipping the primary key constraint: ", zap.String("command", constraint.Command))
+		} else {
+			logger.Info(dropSql)
+			_, err = tx.Exec(context.Background(), dropSql)
+			if err != nil {
+				logger.Error("ERROR: ", zap.Error(err), zap.String("command", constraint.Command))
+				break
+			}
+		}
+	}
+
+	for _, indexInfo := range indexInfos {
+		var dropSql = fmt.Sprintf(dropIndex, indexInfo.Name)
+		if w.regExIdx.MatchString(indexInfo.Def) {
+			logger.Debug("Skipping the unique index: ", zap.String("command", indexInfo.Def))
+		} else {
+			logger.Info(dropSql)
+			_, err = tx.Exec(context.Background(), dropSql)
+			if err != nil {
+				logger.Error("ERROR: ", zap.Error(err), zap.String("command", indexInfo.Def))
+				break
+			}
+		}
+	}
+	return err
+}
+
+func closeTransactionInPanic(tx pgx.Tx) {
+	logger.Debug("Closing the transaction")
+	if p := recover(); p != nil {
+		logger.Debug("Rollback on panic")
+		err := tx.Rollback(context.Background())
+		if err != nil {
+			logger.Warn("Rollback error during panic", zap.Error(err))
+		}
 	}
 }
 

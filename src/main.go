@@ -113,7 +113,7 @@ func main() {
 			} else {
 				// Write data to the corresponding database table
 				tableStartTime := time.Now()
-				recordCount, err := writer.writeTableData(source, &mapper)
+				recordCount, err := writer.writeTable(source, &mapper)
 				if err != nil {
 					logger.Error("Error writing data for table", zap.String("table", table), zap.Error(err))
 					break
