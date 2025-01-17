@@ -167,6 +167,7 @@ func (w *DatabaseWriter) getConstraintList(tableName string) (ret []ConstraintIn
 }
 
 func (w *DatabaseWriter) writeTable(source Source, mapper *FieldMapper) (ret int, err error) {
+	start := time.Now()
 	tableName := mapper.Info.TableName
 	indexInfos, err := w.getIndexList(tableName)
 	if err != nil {
@@ -221,8 +222,25 @@ func (w *DatabaseWriter) writeTable(source Source, mapper *FieldMapper) (ret int
 		return
 	}
 	logger.Debug("deferConstraints query executed", zap.Any("rows", rows))
+	rows.Close()
 
 	err = tx.Commit(context.Background())
+
+	recordsPerSecond := 0.0
+	secondsPassed := time.Since(start).Seconds()
+	if secondsPassed > 0 {
+		recordsPerSecond = float64(ret) / secondsPassed
+	} else if microsecondsPassed := time.Since(start).Milliseconds(); microsecondsPassed > 0 {
+		x := ret * 1000000
+		recordsPerSecond = float64(x) / float64(microsecondsPassed)
+	}
+
+	logger.Info("COPY TO command executed successfully",
+		zap.String("table", mapper.Info.TableName),
+		zap.Int("rows_copied", ret),
+		zap.Duration("execution_time", time.Since(start)),
+		zap.Int64("records_per_second", int64(recordsPerSecond)))
+
 	return
 }
 
@@ -579,7 +597,6 @@ func (w *DatabaseWriter) writeTablePart(source Source, mapper *FieldMapper, rela
 	}
 	schemaName, tableName := parts[0], parts[1]
 
-	start := time.Now()
 	copied, err := w.db.CopyFrom(
 		context.Background(),
 		pgx.Identifier{schemaName, tableName},
@@ -592,17 +609,5 @@ func (w *DatabaseWriter) writeTablePart(source Source, mapper *FieldMapper, rela
 
 	ret += int(copied)
 
-	recordsPerSecond := 0.0
-	secondsPassed := time.Since(start).Seconds()
-	if secondsPassed > 0 {
-		recordsPerSecond = float64(ret) / secondsPassed
-	} else if microsecondsPassed := time.Since(start).Milliseconds(); microsecondsPassed > 0 {
-		x := ret * 1000000
-		recordsPerSecond = float64(x) / float64(microsecondsPassed)
-	}
-
-	logger.Info("COPY TO command executed successfully", zap.String("table", mapper.Info.TableName),
-		zap.Int("rows_copied", int(copied)), zap.String("file", relativePath),
-		zap.Duration("execution_time", time.Since(start)), zap.Float64("records_per_second", recordsPerSecond))
 	return ret, nil
 }
