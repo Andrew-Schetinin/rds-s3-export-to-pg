@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"path/filepath"
 	"regexp"
+	"slices"
+	"strings"
 	"time"
 
-	// TODO: implement it later
-	_ "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
 
@@ -26,7 +29,7 @@ type ConstraintInfo struct {
 type DatabaseWriter struct {
 	//connStr := "postgres://andrews:asd@localhost:5432/tms_test?sslmode=disable"
 	ConnectionString string
-	db               *sql.DB
+	db               *pgx.Conn //*sql.DB
 }
 
 func NewDatabaseWriter(host string, port int, name string, user string, password string, mode bool) DatabaseWriter {
@@ -56,7 +59,7 @@ type Relation struct {
 
 func (w *DatabaseWriter) connect() error {
 	logger.Debug("Connecting to the database")
-	db, err := sql.Open("postgres", w.ConnectionString)
+	db, err := pgx.Connect(context.Background(), w.ConnectionString)
 	if err == nil && db == nil {
 		return fmt.Errorf("database connection is nil")
 	}
@@ -67,7 +70,7 @@ func (w *DatabaseWriter) connect() error {
 func (w *DatabaseWriter) close() {
 	if w.db != nil {
 		logger.Debug("Closing the database connection")
-		err := w.db.Close()
+		err := w.db.Close(context.Background())
 		w.db = nil
 		if err != nil {
 			logger.Error("ERROR: ", zap.Error(err))
@@ -78,15 +81,12 @@ func (w *DatabaseWriter) close() {
 func (w *DatabaseWriter) writeTable(tableName string) {
 	//const tableName = "entity_type"
 	// Query for existing indexes on a specific table
-	rows, err := w.db.Query(findIndexes, tableName)
+	rows, err := w.db.Query(context.Background(), findIndexes, tableName)
 	if err != nil {
 		logger.Error("ERROR: ", zap.Error(err))
 	}
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			logger.Error("ERROR: ", zap.Error(err))
-		}
+	defer func(rows pgx.Rows) {
+		rows.Close()
 	}(rows)
 
 	var indexInfos []IndexInfo
@@ -107,20 +107,16 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 		indexInfos = append(indexInfos, indexInfo)
 	}
 
-	err = rows.Err()
-	if err != nil {
+	if err = rows.Err(); err != nil {
 		logger.Error("ERROR: ", zap.Error(err))
 	}
 
-	rows, err = w.db.Query(findConstrains, tableName)
+	rows, err = w.db.Query(context.Background(), findConstrains, tableName)
 	if err != nil {
 		logger.Error("ERROR: ", zap.Error(err))
 	}
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			logger.Error("ERROR: ", zap.Error(err))
-		}
+	defer func(rows pgx.Rows) {
+		rows.Close()
 	}(rows)
 
 	var constraints []ConstraintInfo
@@ -141,7 +137,7 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 	}
 
 	// Begin a transaction
-	tx, err := w.db.Begin()
+	tx, err := w.db.Begin(context.Background())
 	if err != nil {
 		logger.Error("ERROR: ", zap.Error(err))
 	}
@@ -149,12 +145,12 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 	defer func() {
 		if p := recover(); p != nil {
 			// Rollback on panic
-			err := tx.Rollback()
+			err := tx.Rollback(context.Background())
 			if err != nil {
 				logger.Error("ERROR: ", zap.Error(err))
 			}
 			logger.Error("ERROR: ", zap.Any("panic", p))
-		} else if err := tx.Commit(); err != nil {
+		} else if err := tx.Commit(context.Background()); err != nil {
 			logger.Error("ERROR: ", zap.Error(err))
 		}
 	}()
@@ -182,7 +178,7 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 			logger.Debug("Skipping the primary key constraint: ", zap.String("command", constraint.Command))
 		} else {
 			logger.Info(dropSql)
-			_, err = tx.Exec(dropSql)
+			_, err = tx.Exec(context.Background(), dropSql)
 			if err != nil {
 				logger.Error("ERROR: ", zap.Error(err), zap.String("command", constraint.Command))
 				break
@@ -196,7 +192,7 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 			logger.Debug("Skipping the unique index: ", zap.String("command", indexInfo.Def))
 		} else {
 			logger.Info(dropSql)
-			_, err = tx.Exec(dropSql)
+			_, err = tx.Exec(context.Background(), dropSql)
 			if err != nil {
 				logger.Error("ERROR: ", zap.Error(err), zap.String("command", indexInfo.Def))
 				break
@@ -209,7 +205,7 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 			logger.Debug("Skipping the unique index: ", zap.String("command", indexInfo.Def))
 		} else {
 			logger.Info(indexInfo.Def)
-			_, err = tx.Exec(indexInfo.Def)
+			_, err = tx.Exec(context.Background(), indexInfo.Def)
 			if err != nil {
 				logger.Error("ERROR: ", zap.Error(err))
 				break
@@ -223,7 +219,7 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 			logger.Debug("Skipping the primary key constraint: ", zap.String("command", constraint.Command))
 		} else {
 			logger.Info(createSql)
-			_, err = tx.Exec(createSql)
+			_, err = tx.Exec(context.Background(), createSql)
 			if err != nil {
 				logger.Error("ERROR: ", zap.Error(err))
 				break
@@ -232,7 +228,7 @@ func (w *DatabaseWriter) writeTable(tableName string) {
 	}
 
 	logger.Info("Rolling back the transaction")
-	err = tx.Rollback()
+	err = tx.Rollback(context.Background())
 	if err != nil {
 		logger.Error("ERROR: ", zap.Error(err))
 	}
@@ -339,17 +335,14 @@ func (w *DatabaseWriter) getTablesOrdered() (ret []string, err error) {
 func (w *DatabaseWriter) getTables() (tables []string, err error) {
 	// get all tables
 	startTime := time.Now() // Start measuring time
-	rows, err := w.db.Query(listTables)
+	rows, err := w.db.Query(context.Background(), listTables)
 	logger.Debug("listTables query executed", zap.Duration("execution_time", time.Since(startTime)))
 	if err != nil {
 		return nil, fmt.Errorf("querying tables failed: %w", err)
 	}
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			logger.Error("ERROR: ", zap.Error(err))
-		}
-	}(rows)
+	defer func() {
+		rows.Close()
+	}()
 
 	for rows.Next() {
 		var tableName string
@@ -373,18 +366,15 @@ func (w *DatabaseWriter) getFKeys() (*FKeysGraph[Relation], error) {
 	if w.db == nil {
 		return nil, fmt.Errorf("database connection is nil")
 	}
-	logger.Debug("Querying foreign keys...") //, zap.String("query", listFKeys))
-	rows, err := w.db.Query(listFKeys)       // Execute the query
+	logger.Debug("Querying foreign keys...")                 //, zap.String("query", listFKeys))
+	rows, err := w.db.Query(context.Background(), listFKeys) // Execute the query
 	logger.Debug("listFKeys query executed", zap.Duration("execution_time", time.Since(startTime)))
 	if err != nil {
 		return nil, fmt.Errorf("querying foreign keys failed: %w", err)
 	}
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			logger.Error("ERROR: Failed to close foreign key query rows", zap.Error(err))
-		}
-	}(rows)
+	defer func() {
+		rows.Close()
+	}()
 
 	fkMap := NewFKeysGraph[Relation](1000)
 	count := 0
@@ -392,7 +382,8 @@ func (w *DatabaseWriter) getFKeys() (*FKeysGraph[Relation], error) {
 		count += 1
 		var r Relation
 		var foreignSchema, foreignTable, foreignColumns sql.NullString
-		err := rows.Scan(&r.constraintName, &r.constraintType, &r.selfSchema, &r.selfTable, &r.selfColumns,
+		var constraintType rune
+		err := rows.Scan(&r.constraintName, &constraintType, &r.selfSchema, &r.selfTable, &r.selfColumns,
 			&foreignSchema, &foreignTable, &foreignColumns, &r.definition)
 		if err != nil {
 			return nil, fmt.Errorf("scanning foreign key rows failed: %w", err)
@@ -406,6 +397,7 @@ func (w *DatabaseWriter) getFKeys() (*FKeysGraph[Relation], error) {
 		if foreignColumns.Valid {
 			r.foreignColumns = foreignColumns.String
 		}
+		r.constraintType = string(constraintType)
 
 		if r.constraintType != "f" {
 			continue // for now skip all constraints which are not foreign keys
@@ -434,4 +426,119 @@ func (w *DatabaseWriter) getFKeys() (*FKeysGraph[Relation], error) {
 	fkMap.calculateInDegree()
 
 	return &fkMap, nil
+}
+
+func (w *DatabaseWriter) getFieldMapper(info ParquetFileInfo) (ret FieldMapper, err error) {
+	mapper := FieldMapper{
+		Info:   info,
+		Writer: w,
+	}
+	return mapper, nil
+}
+
+func (w *DatabaseWriter) getTableSize(tableName string) int {
+	size := -1
+	query := fmt.Sprintf(selectTableSize, tableName)
+	err := w.db.QueryRow(context.Background(), query).Scan(&size)
+	if err != nil {
+		logger.Error("Failed to fetch table size", zap.String("table_name", tableName), zap.Error(err))
+		return -1
+	}
+	return size
+}
+
+func (w *DatabaseWriter) writeTableData(source Source, mapper *FieldMapper) (ret int, err error) {
+	// TODO: replace the database name with a name read from the configuration
+	relativePath := fmt.Sprintf("%s/%s", "tms_test", mapper.Info.TableName)
+	allFiles, err := source.listFilesRecursively(relativePath)
+	slices.Sort(allFiles)
+
+	// Group files by their subfolders
+	groupedFiles := make(map[string][]string) // map[subfolder][]files
+	for _, file := range allFiles {
+		subfolder := filepath.Dir(file) // Get the subfolder path
+		groupedFiles[subfolder] = append(groupedFiles[subfolder], file)
+	}
+
+	// Process each group
+	for subfolder, files := range groupedFiles {
+		logger.Debug("Processing files in subfolder", zap.String("subfolder", subfolder))
+
+		// Ensure the files list contains the "_success" file
+		successFileFound := false
+		for _, file := range files {
+			s := filepath.Base(file)
+			if s == "_success" || s == "_SUCCESS" {
+				successFileFound = true
+				break
+			}
+		}
+		if !successFileFound {
+			return -1, fmt.Errorf("missing _success file in subfolder: %s", subfolder)
+		}
+
+		// Process files in the subfolder group
+		for _, file := range files {
+			s := filepath.Base(file)
+			if s == "_success" || s == "_SUCCESS" {
+				logger.Debug("Skipping the _success file")
+			} else if strings.HasSuffix(s, ".parquet") {
+				logger.Debug("Processing file", zap.String("file", file))
+
+				// Add specific file processing logic here
+				size, err := w.writeTablePart(source, mapper, file)
+				if err != nil {
+					return -1, fmt.Errorf("writing table part failed: %w", err)
+				}
+				ret += size
+			} else {
+				logger.Warn("Skipping file with unsupported extension", zap.String("file", file))
+			}
+		}
+	}
+
+	return ret, nil
+}
+
+func (w *DatabaseWriter) writeTablePart(source Source, mapper *FieldMapper, relativePath string) (ret int, err error) {
+	file := source.getFile(relativePath)
+
+	//rows := [][]any{
+	//	{"John", "Smith", int32(36)},
+	//	{"Jane", "Doe", int32(29)},
+	//}
+
+	parts := strings.Split(mapper.Info.TableName, ".")
+	if len(parts) != 2 {
+		// Handle the error if the identifier format is invalid (e.g., missing schema or table name)
+		logger.Fatal("Invalid identifier format. Expected 'schema_name.table_name'")
+	}
+	schemaName, tableName := parts[0], parts[1]
+
+	start := time.Now()
+	copied, err := w.db.CopyFrom(
+		context.Background(),
+		pgx.Identifier{schemaName, tableName},
+		mapper.getFieldNames(), //[]string{"first_name", "last_name", "age"},
+		mapper.getRows(file),   // pgx.CopyFromRows(rows),
+	)
+	if err != nil {
+		return -1, fmt.Errorf("writing the table '%s' failed: %w", mapper.Info.TableName, err)
+	}
+
+	ret += int(copied)
+
+	recordsPerSecond := 0.0
+	secondsPassed := time.Since(start).Seconds()
+	if secondsPassed > 0 {
+		recordsPerSecond = float64(ret) / secondsPassed
+	} else if microsecondsPassed := time.Since(start).Milliseconds(); microsecondsPassed > 0 {
+		x := ret * 1000000
+		recordsPerSecond = float64(x) / float64(microsecondsPassed)
+	}
+
+	logger.Info("COPY TO command executed successfully", zap.String("table", mapper.Info.TableName),
+		zap.Int("rows_copied", int(copied)), zap.String("file", relativePath),
+		zap.Duration("execution_time", time.Since(start)), zap.Float64("records_per_second", recordsPerSecond))
+	return ret, nil
 }

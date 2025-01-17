@@ -45,4 +45,6 @@ const listFKeys = `
 	ORDER BY "self_schema", "self_table";
 	`
 
-// AND (tc.TABLE_NAME = $1 OR ccu.TABLE_NAME = $1);
+const selectTableSize = "SELECT COUNT(*) FROM %s"
+
+const copyTable = "COPY %s(%s) FROM STDIN WITH CSV HEADER, FREEZE true;"

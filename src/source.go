@@ -1,7 +1,7 @@
 package main
 
 // File represents a file to be processed - may be temporary
-type File struct {
+type FileInfo struct {
 	// relativePath specifies the file path relative to Source. Used for addressing files in the remote data source.
 	relativePath string
 	// localPath an absolute path of a local file (downloaded from a remote data source if needed)
@@ -22,7 +22,12 @@ type Source interface {
 	// The returned file structure points to a local file (with an absolute localPath),
 	// where the file may be downloaded from a remote storage and kept temporarily
 	// for duration of the program execution only.
-	getFile(relativePath string) File
+	getFile(relativePath string) FileInfo
+
+	// Dispose this method must be called for every returned file when it is not needed anymore.
+	// It will make sure all temporary files are removed and not use disk space when not needed.
+	// If the file is not a temporary file, this method does nothing.
+	Dispose(file FileInfo)
 
 	// listFiles returns a list of relative file paths as strings within the directory specified
 	// by the given relative relativePath and matching the given fileMask (for example "*.json").
@@ -31,8 +36,8 @@ type Source interface {
 	// It returns an error if the directory cannot be accessed or processed.
 	listFiles(relativePath string, fileMask string, foldersOnly bool) ([]string, error)
 
-	// Dispose this method must be called for every returned file when it is not needed anymore.
-	// It will make sure all temporary files are removed and not use disk space when not needed.
-	// If the file is not a temporary file, this method does nothing.
-	Dispose(file File)
+	// listFilesRecursively returns a list of all file paths within a directory and its subdirectories.
+	// It takes a string parameter 'relativePath' representing the root directory and returns a slice of strings
+	// containing the file paths or an error if traversal fails.
+	listFilesRecursively(relativePath string) ([]string, error)
 }

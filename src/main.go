@@ -72,7 +72,9 @@ func main() {
 		writer.close()
 	}()
 
-	startTime := time.Now() // Start measuring time
+	// Get the list of tables from PostgreSQL database - we can only populate these tables.
+	// The order is calculated based on relations between tables and it is very important.
+	startTime := time.Now()
 	tables, err := writer.getTablesOrdered()
 	if err != nil {
 		logger.Error("Error working with the database: ", zap.Error(err))
@@ -81,6 +83,7 @@ func main() {
 	logger.Info("Retrieved tables from the database", zap.Int("count", len(tables)),
 		zap.Duration("time", time.Since(startTime)))
 
+	// Get the list of tables in Parquet files - we only have data for those tables
 	parquetTables, err := reader.iterateOverTables(tables)
 	if err != nil {
 		logger.Error("ERROR: ", zap.Error(err))
@@ -89,4 +92,44 @@ func main() {
 	logger.Info("Parsed Parquet files", zap.Int("count", len(parquetTables)),
 		zap.Duration("time", time.Since(startTime)))
 
+	// Convert parquetTables list to a map where the table name is the key
+	parquetTableMap := make(map[string]ParquetFileInfo)
+	for _, table := range parquetTables {
+		parquetTableMap[table.TableName] = table
+	}
+
+	// Iterate over the list of tables in the correct order and process them
+	for _, table := range tables {
+		if parquetInfo, exists := parquetTableMap[table]; exists {
+			// Construct the field mapper that defines the strategy of loading this table
+			mapper, err := writer.getFieldMapper(parquetInfo)
+			if err != nil {
+				logger.Error("Error mapping fields for table", zap.String("table", table), zap.Error(err))
+				continue
+			}
+
+			if reason, skip := mapper.shouldSkip(); skip {
+				logger.Info("Skipping table", zap.String("table", table), zap.String("reason", reason))
+			} else {
+				// Write data to the corresponding database table
+				tableStartTime := time.Now()
+				recordCount, err := writer.writeTableData(source, &mapper)
+				if err != nil {
+					logger.Error("Error writing data for table", zap.String("table", table), zap.Error(err))
+					break
+				}
+				duration := time.Since(tableStartTime)
+				recordsPerSecond := 0.0
+				if duration.Seconds() > 0 {
+					recordsPerSecond = float64(recordCount) / duration.Seconds()
+				} else if duration.Microseconds() > 0 {
+					recordsPerSecond = (float64(recordCount) * 1000000.0) / float64(duration.Microseconds())
+				}
+				logger.Info("Loaded table data", zap.String("table", table),
+					zap.Int("records", recordCount), zap.Duration("time", duration),
+					zap.Float64("records/sec", recordsPerSecond))
+			}
+		}
+	}
+	logger.Info("Finished processing all tables", zap.Duration("total_time", time.Since(startTime)))
 }
