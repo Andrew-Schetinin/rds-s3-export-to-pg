@@ -8,38 +8,61 @@ import (
 	"os"
 )
 
+// ParquetReader is a structure for reading and processing Parquet files while mapping data to a defined schema.
 type ParquetReader struct {
-	fileInfo    FileInfo
-	mapper      *FieldMapper
-	isOpen      bool
-	wasClosed   bool
-	lastError   error
-	file        *os.File
+	// fileInfo contains metadata and details of the file to be processed, such as its path, size, etc.
+	fileInfo FileInfo
+
+	// mapper is a reference to the FieldMapper used to map Parquet fields to a defined schema of the target table.
+	mapper *FieldMapper
+
+	// isOpen indicates whether the ParquetReader is currently open and ready for processing.
+	isOpen bool
+
+	// wasClosed indicates whether the ParquetReader was closed after being opened.
+	wasClosed bool
+
+	// lastError stores the most recent error encountered by the ParquetReader, or nil if no errors occurred.
+	lastError error
+
+	// file represents the underlying os.File, used to read the current Parquet file's data.
+	file *os.File
+
+	// parquetFile is a reference to the open Parquet file being processed by the ParquetReader.
 	parquetFile *parquet.File
-	rowCount    int64
-	channel     chan NextRow
-	nextRow     []any
-	rowCounter  int64
+
+	// rowCount represents the total number of rows in the Parquet file being processed.
+	rowCount int64
+
+	// channel is a channel used for asynchronously receiving parsed rows from the Parquet file during processing.
+	channel chan NextRow
+
+	// nextRow the data of the current row, represented as a slice of interface{} to accommodate any type.
+	nextRow []any
+
+	// rowCounter keeps track of the number of rows processed by the ParquetReader during iteration.
+	rowCounter int64
 }
 
+// NextRow represents a single row of data and an associated error, returned from the channel as a single structure.
 type NextRow struct {
+	// row represents a single row of data, stored as a slice of interface{} to accommodate various data types.
 	row []any
+
+	// err represents an error encountered during the processing of the current row, or nil if no error occurred.
 	err error
+}
+
+// IsEmpty returns true if the source Parquet file is empty, or if there is an error in the processing
+func (r *ParquetReader) IsEmpty() bool {
+	r.OpenAndStartReadingIfNotDoneYet()
+	return r.rowCount <= 0 || r.lastError != nil
 }
 
 // Next attempts to establish or maintain the reader's state, returning true if no error occurs and false otherwise.
 // It implements the interface pgx.CopyFromSource
 func (r *ParquetReader) Next() bool {
-	if r.lastError == nil {
-		if !r.isOpen && !r.wasClosed {
-			r.lastError = r.Open(r.fileInfo)
-			if r.lastError == nil {
-				count, err := r.Read(r.mapper)
-				logger.Debug("ParquetReader.Next(): r.Read()", zap.Int("count", count), zap.Error(err))
-				r.lastError = err
-			}
-		}
-	}
+	r.OpenAndStartReadingIfNotDoneYet()
 	if r.lastError != nil {
 		return false
 	}
@@ -115,8 +138,8 @@ func (r *ParquetReader) Close() (err error) {
 	return
 }
 
-// Read reads rows from a parquet file using a FieldMapper and starts a goroutine to process rows asynchronously.
-func (r *ParquetReader) Read(mapper *FieldMapper) (int, error) {
+// StartReading reads rows from a parquet file using a FieldMapper and starts a goroutine to process rows asynchronously.
+func (r *ParquetReader) StartReading(mapper *FieldMapper) (int, error) {
 	logger.Debug("f.Schema(): ", zap.String("name", r.parquetFile.Schema().Name()))
 	for i, column := range r.parquetFile.Schema().Columns() {
 		for j, path := range column {
@@ -190,94 +213,19 @@ func (r *ParquetReader) Read(mapper *FieldMapper) (int, error) {
 	return int(r.rowCount), nil
 }
 
-//func readParquet(localFilePath string) {
-//
-//	// Open the Parquet file
-//	fileName := localFilePath // "/Users/andrews/Downloads/part-00000-d68fd39b-0c1b-401b-aeb2-ee1f8ded89dc-c000.gz.parquet"
-//	//"/Users/andrews/Downloads/flights-1m.parquet" // "/Users/andrews/Downloads/mtcars.parquet"
-//	file, err := os.Open(fileName)
-//	if err != nil {
-//		logger.Error("Failed to open file: "+fileName, zap.Error(err))
-//	}
-//	defer func(file *os.File) {
-//		err := file.Close()
-//		if err != nil {
-//			logger.Error("ERROR: ", zap.Error(err))
-//		}
-//	}(file)
-//
-//	var fileInfo, err2 = file.Stat()
-//	if err2 != nil {
-//		logger.Error("Failed to get file info: "+fileName, zap.Error(err2))
-//		return
-//	}
-//	size := fileInfo.Size()
-//	f, err := parquet.OpenFile(file, size)
-//	if err != nil {
-//		logger.Error("Failed to open file: "+fileName, zap.Error(err))
-//	}
-//	rowCount := f.NumRows()
-//	logger.Debug(fmt.Sprintf(`Row count = %d`, rowCount))
-//
-//	logger.Debug("f.Schema(): ", zap.String("name", f.Schema().Name()))
-//	for i, column := range f.Schema().Columns() {
-//		for j, path := range column {
-//			logger.Debug("Column", zap.Int("i", i), zap.Int("j", j), zap.String("localPath", path))
-//		}
-//	}
-//
-//	for i, rowGroup := range f.RowGroups() {
-//		logger.Debug("RowGroup: ", zap.Int("index", i))
-//		for j, columnChunk := range rowGroup.ColumnChunks() {
-//			logger.Debug("ColumnChunk: ", zap.Int("index", j))
-//			columnChunk.Column()
-//		}
-//	}
-//
-//	//f, err := parquet.ReadFile(file, size)
-//	//if err != nil {
-//	//	...
-//	//}
-//
-//	//// Create a parquet.File from the os.File
-//	//pFile, err := parquet.NewP.NewNewParquetFile(file)
-//	//if err != nil {
-//	//	// Handle the error
-//	//}
-//	//defer pFile.Close()
-//	//
-//	//// Create a new Parquet reader
-//	//pqReader, err := reader.NewParquetReader(file, new(User), 4) // 4 goroutines
-//	//if err != nil {
-//	//	log.Fatalf("Failed to create Parquet reader: %v", err)
-//	//}
-//	//defer pqReader.ReadStop() // Ensure the reader stops after execution
-//	//
-//	//// Read data in batches of 1000 records
-//	//batchSize := 1000
-//	//totalRows := int(pqReader.GetNumRows())
-//	//
-//	//fmt.Printf("Found %d rows in the Parquet file\n", totalRows)
-//	//
-//	//batch := make([]User, batchSize) // Allocate a slice for the batch
-//	//for i := 0; i < totalRows; i += batchSize {
-//	//	// Calculate the size of the slice to read (batchSize or remaining rows)
-//	//	rowsToRead := batchSize
-//	//	if i+batchSize > totalRows {
-//	//		rowsToRead = totalRows - i
-//	//		batch = make([]User, rowsToRead) // Resize for the final batch
-//	//	}
-//	//
-//	//	// Read the batch into the pre-allocated slice
-//	//	if err := pqReader.Read(&batch); err != nil {
-//	//		log.Fatalf("Failed to read batch at index %d: %v", i, err)
-//	//	}
-//	//
-//	//	// Process the batch
-//	//	fmt.Printf("Processing batch starting at row %d\n", i)
-//	//	for _, user := range batch {
-//	//		fmt.Printf("User: Name=%s, Age=%d\n", user.Name, user.Age)
-//	//	}
-//	//}
-//
-//}
+func (r *ParquetReader) OpenAndStartReadingIfNotDoneYet() {
+	if r.lastError == nil {
+		if !r.isOpen && !r.wasClosed {
+			r.lastError = r.Open(r.fileInfo)
+			if r.lastError == nil {
+				count, err := r.StartReading(r.mapper)
+				logger.Debug("ParquetReader.Next(): r.IsEmpty()", zap.Int("count", count), zap.Error(err))
+				if err != nil {
+					r.lastError = err
+				} else if count == 0 {
+					r.lastError = io.EOF
+				}
+			}
+		}
+	}
+}

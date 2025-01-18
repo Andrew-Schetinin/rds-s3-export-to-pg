@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -235,7 +236,7 @@ func (w *DatabaseWriter) writeTable(source Source, mapper *FieldMapper) (ret int
 		recordsPerSecond = float64(x) / float64(microsecondsPassed)
 	}
 
-	logger.Info("COPY TO command executed successfully",
+	logger.Debug("COPY TO command executed successfully",
 		zap.String("table", mapper.Info.TableName),
 		zap.Int("rows_copied", ret),
 		zap.Duration("execution_time", time.Since(start)),
@@ -511,10 +512,11 @@ func (w *DatabaseWriter) getFKeys() (*FKeysGraph[Relation], error) {
 	return &fkMap, nil
 }
 
-func (w *DatabaseWriter) getFieldMapper(info ParquetFileInfo) (ret FieldMapper, err error) {
+func (w *DatabaseWriter) getFieldMapper(info ParquetFileInfo, config *Config) (ret FieldMapper, err error) {
 	mapper := FieldMapper{
 		Info:   info,
 		Writer: w,
+		Config: config,
 	}
 	return mapper, nil
 }
@@ -585,20 +587,28 @@ func (w *DatabaseWriter) writeTableData(source Source, mapper *FieldMapper) (ret
 
 func (w *DatabaseWriter) writeTablePart(source Source, mapper *FieldMapper, relativePath string) (ret int, err error) {
 	file := source.getFile(relativePath)
-
-	copied, err := w.db.CopyFrom(
-		context.Background(),
-		CreatePgxIdentifier(mapper.Info.TableName),
-		mapper.getFieldNames(), //[]string{"first_name", "last_name", "age"},
-		mapper.getRows(file),   // pgx.CopyFromRows(rows),
-	)
-	if err != nil {
-		return -1, fmt.Errorf("writing the table '%s' failed: %w", mapper.Info.TableName, err)
+	copyFromSource := mapper.getRows(file)
+	if copyFromSource.IsEmpty() {
+		logger.Debug("Skipping empty Parquet file", zap.String("file", relativePath))
+		if copyFromSource.lastError != nil && copyFromSource.lastError != io.EOF {
+			err = fmt.Errorf("skipping empty Parquet file '%s': %w", relativePath, copyFromSource.lastError)
+		}
+	} else {
+		var copied int64
+		copied, err = w.db.CopyFrom(
+			context.Background(),
+			CreatePgxIdentifier(mapper.Info.TableName),
+			mapper.getFieldNames(), //[]string{"first_name", "last_name", "age"},
+			copyFromSource,         // pgx.CopyFromRows(rows),
+		)
+		if err != nil && err != io.EOF {
+			err = fmt.Errorf("writing the table '%s' failed: %w", mapper.Info.TableName, err)
+		} else {
+			ret += int(copied)
+			err = nil // to erase possible io.EOF
+		}
 	}
-
-	ret += int(copied)
-
-	return ret, nil
+	return
 }
 
 func (w *DatabaseWriter) truncateAllTables(tables []string) (truncatedCount int, err error) {

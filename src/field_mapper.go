@@ -1,20 +1,31 @@
 package main
 
 import (
-	"github.com/jackc/pgx/v5"
 	"github.com/parquet-go/parquet-go"
 	"go.uber.org/zap"
 )
 
 const ReasonNotEmpty = "Table is not empty"
+const ReasonSkippedByConfig1 = "Table is not listed in --include-tables configuration"
+const ReasonSkippedByConfig2 = "Table is listed in --exclude-tables configuration"
 
 type FieldMapper struct {
 	Info ParquetFileInfo
 
 	Writer *DatabaseWriter
+
+	Config *Config
 }
 
 func (m *FieldMapper) shouldSkip() (reason string, skip bool) {
+	found, notEmpty := m.Config.tableNameInSet(m.Config.IncludeTables, m.Info.TableName)
+	if !found && notEmpty {
+		return ReasonSkippedByConfig1, true
+	}
+	found, notEmpty = m.Config.tableNameInSet(m.Config.ExcludeTables, m.Info.TableName)
+	if found && notEmpty {
+		return ReasonSkippedByConfig2, true
+	}
 	size := m.Writer.getTableSize(m.Info.TableName)
 	if size > 0 {
 		return ReasonNotEmpty, false
@@ -30,7 +41,7 @@ func (m *FieldMapper) getFieldNames() []string {
 	return names
 }
 
-func (m *FieldMapper) getRows(file FileInfo) pgx.CopyFromSource {
+func (m *FieldMapper) getRows(file FileInfo) *ParquetReader {
 	reader := ParquetReader{
 		fileInfo: file,
 		mapper:   m,

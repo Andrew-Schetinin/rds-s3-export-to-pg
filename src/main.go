@@ -113,7 +113,7 @@ func main() {
 	for _, table := range tables {
 		if parquetInfo, exists := parquetTableMap[table]; exists {
 			// Construct the field mapper that defines the strategy of loading this table
-			mapper, err := writer.getFieldMapper(parquetInfo)
+			mapper, err := writer.getFieldMapper(parquetInfo, conf)
 			if err != nil {
 				logger.Error("Error mapping fields for table", zap.String("table", table), zap.Error(err))
 				continue

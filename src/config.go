@@ -30,11 +30,11 @@ type Config struct {
 
 	// IncludeTables specifies a comma-separated list of table names to be included in the operation
 	// (with or without schema names).
-	IncludeTables string
+	IncludeTables map[string]struct{}
 
 	// ExcludeTables specifies a comma-separated list of table names to be excluded from the operation
 	// (with or without schema names).
-	ExcludeTables string
+	ExcludeTables map[string]struct{}
 
 	// IgnoreMissingTablePrefixes specifies a set of table name prefixes to be ignored if missing
 	// in the destination database (with or without schema names); this can be useful in cases of partitioned tables.
@@ -210,18 +210,9 @@ func (c *Config) loadFromArguments() {
 	if isNotBlank(localDir) {
 		c.LocalDir = *localDir
 	}
-	if isNotBlank(includeTables) {
-		c.IncludeTables = *includeTables
-	}
-	if isNotBlank(excludeTables) {
-		c.ExcludeTables = *excludeTables
-	}
-	c.IgnoreMissingTablePrefixes = make(map[string]struct{})
-	if isNotBlank(ignoreMissingTablePrefixes) {
-		for _, prefix := range strings.Split(*ignoreMissingTablePrefixes, ",") {
-			c.IgnoreMissingTablePrefixes[strings.TrimSpace(prefix)] = struct{}{}
-		}
-	}
+	c.IncludeTables = createSet(includeTables)
+	c.ExcludeTables = createSet(excludeTables)
+	c.IgnoreMissingTablePrefixes = createSet(ignoreMissingTablePrefixes)
 	if isNotBlank(awsAccessKey) {
 		c.AWSAccessKey = *awsAccessKey
 	}
@@ -302,7 +293,39 @@ func (c *Config) override(argsInstance *Config) {
 	}
 }
 
+// tableNameInSet checks if a given table name exists in the provided set and determines if the set is non-empty.
+// Both the input fullTableName and the configuration tables set can contain optional schema names.
+// In order to be found, the table name must fully match, while schema name is optional -
+// it must only match if both schemas are specified.
+func (c *Config) tableNameInSet(tables map[string]struct{}, fullTableName string) (found bool, notEmpty bool) {
+	notEmpty = len(tables) > 0
+	found = false
+	if notEmpty {
+		schema, table := SplitFullTableName(fullTableName)
+		for testFullTableName := range tables {
+			configSchema, configTable := SplitFullTableName(testFullTableName)
+			// table name must fully match, while schema name is optional - it must only match if both schemas are specified
+			if configTable == table && (configSchema == schema || schema == "" || configSchema == "") {
+				found = true
+				break
+			}
+		}
+	}
+	return
+}
+
 // isNotBlank checks if the provided string pointer is non-nil and its trimmed value is not empty.
 func isNotBlank(s *string) bool {
 	return s != nil && strings.TrimSpace(*s) != ""
+}
+
+// createSet converts a comma-separated string into a set of strings, returning a map with unique keys as set elements.
+func createSet(s *string) map[string]struct{} {
+	ret := make(map[string]struct{})
+	if isNotBlank(s) {
+		for _, prefix := range strings.Split(*s, ",") {
+			ret[strings.TrimSpace(prefix)] = struct{}{}
+		}
+	}
+	return ret
 }
