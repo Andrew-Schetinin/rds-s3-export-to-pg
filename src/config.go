@@ -21,6 +21,9 @@ type Config struct {
 	// ListCommand list database instances (subfolders) in the exported database cluster and exit
 	ListCommand bool
 
+	// TruncateAllCommand indicates whether all tables in the destination database should be truncated before loading data.
+	TruncateAllCommand bool
+
 	// SourceDatabase specifies the database name from the local folder or S3 bucket to be restored;
 	// it can be skipped if there is only one database instance in the exported snapshot
 	SourceDatabase string
@@ -142,6 +145,9 @@ func (c *Config) loadFromArguments() {
 	listCommand := flag.Bool("list", false,
 		"List database instances (subfolders) in the exported database cluster and exit")
 
+	truncateAllCommand := flag.Bool("truncate-all", false,
+		"Truncate all tables in the destination database before loading the data")
+
 	sourceDatabase := flag.String("source-db", "",
 		"The database name from the local folder or S3 bucket to be restored. "+
 			"It can be skipped if there is only one database instance in the exported snapshot.")
@@ -194,6 +200,9 @@ func (c *Config) loadFromArguments() {
 	// only now we can actually read the command line arguments and use them
 	if listCommand != nil && *listCommand {
 		c.ListCommand = true
+	}
+	if truncateAllCommand != nil && *truncateAllCommand {
+		c.TruncateAllCommand = true
 	}
 	if isNotBlank(sourceDatabase) {
 		c.SourceDatabase = *sourceDatabase

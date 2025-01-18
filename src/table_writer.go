@@ -192,7 +192,7 @@ func (w *DatabaseWriter) writeTable(source Source, mapper *FieldMapper) (ret int
 	logger.Debug("deferConstraints query executed", zap.Any("rows", rows))
 	rows.Close()
 
-	rows, err = w.db.Query(context.Background(), fmt.Sprintf(disableTriggers, tableName))
+	rows, err = w.db.Query(context.Background(), fmt.Sprintf(disableTriggers, SanitizeTableName(tableName)))
 	if err != nil {
 		_ = tx.Rollback(context.Background())
 		return
@@ -216,7 +216,7 @@ func (w *DatabaseWriter) writeTable(source Source, mapper *FieldMapper) (ret int
 		return
 	}
 
-	rows, err = w.db.Query(context.Background(), fmt.Sprintf(enableTriggers, tableName))
+	rows, err = w.db.Query(context.Background(), fmt.Sprintf(enableTriggers, SanitizeTableName(tableName)))
 	if err != nil {
 		_ = tx.Rollback(context.Background())
 		return
@@ -259,7 +259,8 @@ func (w *DatabaseWriter) restoreIndexes(tableName string, indexInfos []IndexInfo
 	}
 
 	for _, constraint := range constraints {
-		var createSql = fmt.Sprintf(addConstraint, tableName, constraint.Name, constraint.Command)
+		var createSql = fmt.Sprintf(addConstraint, SanitizeTableName(tableName), SanitizeTableName(constraint.Name),
+			constraint.Command)
 		if w.regExPrimary.MatchString(createSql) || w.regExCon.MatchString(constraint.Command) {
 			logger.Debug("Skipping the primary key constraint: ", zap.String("command", constraint.Command))
 		} else {
@@ -276,7 +277,7 @@ func (w *DatabaseWriter) restoreIndexes(tableName string, indexInfos []IndexInfo
 
 func (w *DatabaseWriter) dropIndexes(tableName string, constraints []ConstraintInfo, err error, tx pgx.Tx, indexInfos []IndexInfo) error {
 	for _, constraint := range constraints {
-		var dropSql = fmt.Sprintf(dropConstraint, tableName, constraint.Name)
+		var dropSql = fmt.Sprintf(dropConstraint, SanitizeTableName(tableName), SanitizeTableName(constraint.Name))
 		if w.regExPrimary.MatchString(constraint.Command) {
 			logger.Debug("Skipping the primary key constraint: ", zap.String("command", constraint.Command))
 		} else {
@@ -290,7 +291,7 @@ func (w *DatabaseWriter) dropIndexes(tableName string, constraints []ConstraintI
 	}
 
 	for _, indexInfo := range indexInfos {
-		var dropSql = fmt.Sprintf(dropIndex, indexInfo.Name)
+		var dropSql = fmt.Sprintf(dropIndex, SanitizeTableName(indexInfo.Name))
 		if w.regExIdx.MatchString(indexInfo.Def) {
 			logger.Debug("Skipping the unique index: ", zap.String("command", indexInfo.Def))
 		} else {
@@ -520,7 +521,7 @@ func (w *DatabaseWriter) getFieldMapper(info ParquetFileInfo) (ret FieldMapper, 
 
 func (w *DatabaseWriter) getTableSize(tableName string) int {
 	size := -1
-	query := fmt.Sprintf(selectTableSize, tableName)
+	query := fmt.Sprintf(selectTableSize, SanitizeTableName(tableName))
 	err := w.db.QueryRow(context.Background(), query).Scan(&size)
 	if err != nil {
 		logger.Error("Failed to fetch table size", zap.String("table_name", tableName), zap.Error(err))
@@ -585,21 +586,9 @@ func (w *DatabaseWriter) writeTableData(source Source, mapper *FieldMapper) (ret
 func (w *DatabaseWriter) writeTablePart(source Source, mapper *FieldMapper, relativePath string) (ret int, err error) {
 	file := source.getFile(relativePath)
 
-	//rows := [][]any{
-	//	{"John", "Smith", int32(36)},
-	//	{"Jane", "Doe", int32(29)},
-	//}
-
-	parts := strings.Split(mapper.Info.TableName, ".")
-	if len(parts) != 2 {
-		// Handle the error if the identifier format is invalid (e.g., missing schema or table name)
-		logger.Fatal("Invalid identifier format. Expected 'schema_name.table_name'")
-	}
-	schemaName, tableName := parts[0], parts[1]
-
 	copied, err := w.db.CopyFrom(
 		context.Background(),
-		pgx.Identifier{schemaName, tableName},
+		CreatePgxIdentifier(mapper.Info.TableName),
 		mapper.getFieldNames(), //[]string{"first_name", "last_name", "age"},
 		mapper.getRows(file),   // pgx.CopyFromRows(rows),
 	)
@@ -610,4 +599,26 @@ func (w *DatabaseWriter) writeTablePart(source Source, mapper *FieldMapper, rela
 	ret += int(copied)
 
 	return ret, nil
+}
+
+func (w *DatabaseWriter) truncateAllTables(tables []string) (truncatedCount int, err error) {
+	for i := len(tables) - 1; i >= 0; i-- {
+		table := tables[i]
+		// Query to check if the table is not empty
+		query := fmt.Sprintf(checkIfTableIsNotEmpty, SanitizeTableName(table))
+		var tableNotEmpty bool
+		err = w.db.QueryRow(context.Background(), query).Scan(&tableNotEmpty)
+		if err != nil {
+			return truncatedCount, fmt.Errorf("checking if table '%s' is not empty failed: %w", table, err)
+		}
+		if tableNotEmpty {
+			logger.Info("Truncating table", zap.String("table", table))
+			_, err = w.db.Exec(context.Background(), fmt.Sprintf(truncateTable, SanitizeTableName(table)))
+			if err != nil {
+				return truncatedCount, fmt.Errorf("truncating table '%s' failed: %w", table, err)
+			}
+			truncatedCount++
+		}
+	}
+	return truncatedCount, nil
 }

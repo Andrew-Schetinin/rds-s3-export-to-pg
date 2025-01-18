@@ -52,3 +52,7 @@ const disableTriggers = "ALTER TABLE %s DISABLE TRIGGER ALL;"
 const enableTriggers = "ALTER TABLE %s ENABLE TRIGGER ALL;"
 
 const deferConstraints = "SET CONSTRAINTS ALL DEFERRED;"
+
+const truncateTable = "TRUNCATE TABLE %s CASCADE;"
+
+const checkIfTableIsNotEmpty = "SELECT EXISTS (SELECT 1 FROM %s LIMIT 1)"

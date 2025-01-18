@@ -83,6 +83,17 @@ func main() {
 	logger.Info("Retrieved tables from the database", zap.Int("count", len(tables)),
 		zap.Duration("time", time.Since(startTime)))
 
+	if conf.TruncateAllCommand {
+		startTime2 := time.Now()
+		truncatedCount, err := writer.truncateAllTables(tables)
+		if err != nil {
+			logger.Error("Error truncating tables: ", zap.Error(err))
+			return
+		}
+		logger.Info("Truncating all tables done", zap.Int("truncatedCount", truncatedCount),
+			zap.Duration("time", time.Since(startTime2)))
+	}
+
 	// Get the list of tables in Parquet files - we only have data for those tables
 	parquetTables, err := reader.iterateOverTables(tables)
 	if err != nil {
