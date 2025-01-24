@@ -68,7 +68,7 @@ func (r *ParquetReader) Next() bool {
 	}
 	data, ok := <-r.channel
 	if !ok {
-		r.lastError = io.EOF
+		// r.lastError = io.EOF // this caused a bug with small tables
 		return false
 	}
 	if data.err != nil {

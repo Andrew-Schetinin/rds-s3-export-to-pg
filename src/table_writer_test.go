@@ -116,7 +116,7 @@ func runTestInAnotherDatabase(t *testing.T, testDatabaseName string, pwd string)
 	createTableQuery := `
 			CREATE TABLE test_table (
 				id BIGINT PRIMARY KEY,
-				name VARCHAR(255) NOT NULL
+				name VARCHAR(1000) NOT NULL
 			);`
 	_, err = db.Exec(context.Background(), createTableQuery)
 	if err != nil {
@@ -175,6 +175,21 @@ func runTestInAnotherDatabase(t *testing.T, testDatabaseName string, pwd string)
 		t.Errorf("Number of rows copied (%d) does not match the test data size (%d)", copied, len(testData.data))
 	} else {
 		t.Logf("Successfully copied %d rows into 'test_table'", copied)
+	}
+
+	// Check the count of records in the `test_table`
+	var count int
+	err = db.QueryRow(context.Background(), "SELECT COUNT(*) FROM test_table").Scan(&count)
+	if err != nil {
+		t.Errorf("Failed to count records in 'test_table': %v", err)
+		return
+	}
+
+	// Verify the count matches the inserted test data size
+	if count != len(testData.data) {
+		t.Errorf("Record count in 'test_table' (%d) does not match the expected test data size (%d)", count, len(testData.data))
+	} else {
+		t.Logf("Record count in 'test_table' is correct: %d", count)
 	}
 }
 
