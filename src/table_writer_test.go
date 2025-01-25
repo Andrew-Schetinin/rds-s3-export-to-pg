@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"dbrestore/config"
+	"dbrestore/utils"
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"gopkg.in/yaml.v3"
@@ -48,11 +50,11 @@ func loadTestConfig() map[string]interface{} {
 }
 
 func TestCreateTestDatabase(t *testing.T) {
-	config := loadTestConfig()
+	conf := loadTestConfig()
 
 	t.Run("Create test database", func(t *testing.T) {
 		// initialize configuration
-		pwd := config[passwordKey].(string)
+		pwd := conf[passwordKey].(string)
 		if pwd == "" {
 			t.Errorf("Local PostgreSQL password not found in the test config file: %s", testConfigFileName)
 		}
@@ -140,7 +142,7 @@ func runTestInAnotherDatabase(t *testing.T, testDatabaseName string, pwd string)
 				},
 			},
 		},
-		Config: &Config{
+		Config: &config.Config{
 			IncludeTables: make(map[string]struct{}),
 			ExcludeTables: make(map[string]struct{}),
 		},
@@ -160,7 +162,7 @@ func runTestInAnotherDatabase(t *testing.T, testDatabaseName string, pwd string)
 	var copied int64
 	copied, err = db.CopyFrom(
 		context.Background(),
-		CreatePgxIdentifier("test_table"),
+		utils.CreatePgxIdentifier("test_table"),
 		mapper.getFieldNames(), //[]string{"first_name", "last_name", "age"},
 		&testData,              // pgx.CopyFromRows(rows),
 	)

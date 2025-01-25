@@ -167,10 +167,10 @@ func (g *FKeysGraph[T]) topologicalSort() []string {
 	if len(visited) != len(stack) {
 		// I cannot trigger this condition, so cannot cover this code - it just never happens practically.
 		// I do not want to remove this test anyway.
-		logger.Error("topologicalSort(): FATAL: The number of visited nodes is not equal to the number of stack elements",
+		log.Error("topologicalSort(): FATAL: The number of visited nodes is not equal to the number of stack elements",
 			zap.Int("len(visited)", len(visited)), zap.Int("len(stack)", len(stack)))
-		logger.Debug("visited: ", zap.Any("visited", visited))
-		logger.Debug("stack: ", zap.Any("stack", stack))
+		log.Debug("visited: ", zap.Any("visited", visited))
+		log.Debug("stack: ", zap.Any("stack", stack))
 		return nil
 	}
 	// Reverse the stack to get the correct topological order - not needed in our case
@@ -249,7 +249,7 @@ func (g *FKeysGraph[T]) dfs(index int, visited map[int]struct{}, recStack []int)
 	if len(recStack) > 0 && recStack[len(recStack)-1] == index {
 		recStack = recStack[:len(recStack)-1]
 	} else {
-		logger.Error("dfs(): FATAL: The node is not found in recStack", zap.String("node.name", node.name),
+		log.Error("dfs(): FATAL: The node is not found in recStack", zap.String("node.name", node.name),
 			zap.Int("node.index", node.index), zap.Any("recStack", recStack))
 		node.error += "dfs(): FATAL: The node is not found in recStack. "
 		ret = false // we definitely have a problem even if it is not a cycle

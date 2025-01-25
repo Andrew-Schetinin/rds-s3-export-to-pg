@@ -1,6 +1,7 @@
 package main
 
 import (
+	"dbrestore/config"
 	"github.com/parquet-go/parquet-go"
 	"go.uber.org/zap"
 )
@@ -14,15 +15,15 @@ type FieldMapper struct {
 
 	Writer *DatabaseWriter
 
-	Config *Config
+	Config *config.Config
 }
 
 func (m *FieldMapper) shouldSkip() (reason string, skip bool) {
-	found, notEmpty := m.Config.tableNameInSet(m.Config.IncludeTables, m.Info.TableName)
+	found, notEmpty := m.Config.TableNameInSet(m.Config.IncludeTables, m.Info.TableName)
 	if !found && notEmpty {
 		return ReasonSkippedByConfig1, true
 	}
-	found, notEmpty = m.Config.tableNameInSet(m.Config.ExcludeTables, m.Info.TableName)
+	found, notEmpty = m.Config.TableNameInSet(m.Config.ExcludeTables, m.Info.TableName)
 	if found && notEmpty {
 		return ReasonSkippedByConfig2, true
 	}
@@ -53,7 +54,7 @@ func (m *FieldMapper) transform(x parquet.Value) (value any, err error) {
 	columnIndex := x.Column()
 	column := m.Info.Columns[columnIndex]
 	stringValue := x.String()
-	logger.Debug("transform", zap.Any("value", x), zap.String("string", stringValue),
+	log.Debug("transform", zap.Any("value", x), zap.String("string", stringValue),
 		zap.Any("type", x.Kind()), zap.Int("columnIndex", columnIndex),
 		zap.String("column", column.ColumnName), zap.String("originalType", column.OriginalType))
 	if x.IsNull() {

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"go.uber.org/zap"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,9 +27,9 @@ func NewLocalSource(localDir string) *LocalSource {
 	// Normalize the localDir localPath to the current OS format
 	localDir = filepath.Clean(localDir)
 	if info, err := os.Stat(localDir); err != nil {
-		log.Fatalf("Failed to access localDir: %v", err)
+		log.Fatal("Failed to access localDir: %v", zap.Error(err))
 	} else if !info.IsDir() {
-		log.Fatalf("localDir is not a directory: %s", localDir)
+		log.Fatal("localDir is not a directory: %s", zap.String("localDir", localDir))
 	}
 
 	// Extract the last subfolder name from localDir
@@ -43,13 +43,13 @@ func (l *LocalSource) getFile(path string) FileInfo {
 	fullPath := filepath.Join(l.localDir, path)
 	// Check if the file exists
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-		log.Printf("File does not exist: %s", fullPath)
+		log.Error("File does not exist: %s", zap.String("fullPath", fullPath))
 		return FileInfo{} // Return an empty File if file doesn't exist
 	}
 
 	info, err := os.Stat(fullPath)
 	if err != nil {
-		log.Printf("Error retrieving file %s info: %v", fullPath, err)
+		log.Error("Error retrieving file %s info: %v", zap.String("fullPath", fullPath), zap.Error(err))
 		return FileInfo{}
 	}
 
@@ -61,7 +61,7 @@ func (l *LocalSource) Dispose(file FileInfo) {
 	if file.temp {
 		err := os.Remove(file.localPath) // Delete the file
 		if err != nil {
-			log.Printf("Failed to delete file: %v", err)
+			log.Error("Failed to delete file: %v", zap.Error(err))
 		}
 	}
 }

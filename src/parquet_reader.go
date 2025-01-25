@@ -122,7 +122,7 @@ func (r *ParquetReader) Open(fileInfo FileInfo) error {
 	}
 	r.parquetFile = f
 	r.rowCount = f.NumRows()
-	logger.Debug(fmt.Sprintf(`Row count = %d`, r.rowCount))
+	log.Debug(fmt.Sprintf(`Row count = %d`, r.rowCount))
 
 	return nil
 }
@@ -140,17 +140,17 @@ func (r *ParquetReader) Close() (err error) {
 
 // StartReading reads rows from a parquet file using a FieldMapper and starts a goroutine to process rows asynchronously.
 func (r *ParquetReader) StartReading(mapper *FieldMapper) (int, error) {
-	logger.Debug("f.Schema(): ", zap.String("name", r.parquetFile.Schema().Name()))
+	log.Debug("f.Schema(): ", zap.String("name", r.parquetFile.Schema().Name()))
 	for i, column := range r.parquetFile.Schema().Columns() {
 		for j, path := range column {
-			logger.Debug("Column", zap.Int("i", i), zap.Int("j", j), zap.String("localPath", path))
+			log.Debug("Column", zap.Int("i", i), zap.Int("j", j), zap.String("localPath", path))
 		}
 	}
 
 	for i, rowGroup := range r.parquetFile.RowGroups() {
-		logger.Debug("RowGroup: ", zap.Int("index", i))
+		log.Debug("RowGroup: ", zap.Int("index", i))
 		for j, columnChunk := range rowGroup.ColumnChunks() {
-			logger.Debug("ColumnChunk: ", zap.Int("index", j), zap.Int("column", columnChunk.Column()),
+			log.Debug("ColumnChunk: ", zap.Int("index", j), zap.Int("column", columnChunk.Column()),
 				zap.Any("type", columnChunk.Type()))
 		}
 	}
@@ -161,7 +161,7 @@ func (r *ParquetReader) StartReading(mapper *FieldMapper) (int, error) {
 		defer func(r *ParquetReader) {
 			err := r.Close()
 			if err != nil {
-				logger.Error("ERROR: ", zap.Error(err))
+				log.Error("ERROR: ", zap.Error(err))
 			}
 		}(r)
 
@@ -174,7 +174,7 @@ func (r *ParquetReader) StartReading(mapper *FieldMapper) (int, error) {
 					if err == io.EOF {
 						break
 					}
-					logger.Error("Error reading row", zap.Error(err))
+					log.Error("Error reading row", zap.Error(err))
 					break
 				}
 
@@ -183,7 +183,7 @@ func (r *ParquetReader) StartReading(mapper *FieldMapper) (int, error) {
 				}
 
 				singleRow := row[0]
-				logger.Debug("singleRow", zap.Any("singleRow", singleRow))
+				log.Debug("singleRow", zap.Any("singleRow", singleRow))
 
 				var rowData = NextRow{
 					row: make([]any, len(singleRow)),
@@ -192,7 +192,7 @@ func (r *ParquetReader) StartReading(mapper *FieldMapper) (int, error) {
 				for i, x := range singleRow {
 					rowData.row[i], err = mapper.transform(x)
 					if err != nil {
-						logger.Error("Error transforming row", zap.Int("index", i),
+						log.Error("Error transforming row", zap.Int("index", i),
 							zap.Any("value", x), zap.Any("row", row), zap.Error(err))
 						close(r.channel)
 						return
@@ -201,7 +201,7 @@ func (r *ParquetReader) StartReading(mapper *FieldMapper) (int, error) {
 
 				r.channel <- rowData
 
-				logger.Debug("Row", zap.Any("row", row), zap.Int64("rowCounter", r.rowCounter),
+				log.Debug("Row", zap.Any("row", row), zap.Int64("rowCounter", r.rowCounter),
 					zap.Int("rowCount", rowCount))
 				// Process the row as needed
 			}
@@ -219,7 +219,7 @@ func (r *ParquetReader) OpenAndStartReadingIfNotDoneYet() {
 			r.lastError = r.Open(r.fileInfo)
 			if r.lastError == nil {
 				count, err := r.StartReading(r.mapper)
-				logger.Debug("ParquetReader.Next(): r.IsEmpty()", zap.Int("count", count), zap.Error(err))
+				log.Debug("ParquetReader.Next(): r.IsEmpty()", zap.Int("count", count), zap.Error(err))
 				if err != nil {
 					r.lastError = err
 				} else if count == 0 {

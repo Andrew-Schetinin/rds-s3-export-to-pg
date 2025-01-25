@@ -1,6 +1,6 @@
 package main
 
-// File represents a file to be processed - may be temporary
+// FileInfo represents a file to be processed - may be temporary
 type FileInfo struct {
 	// relativePath specifies the file path relative to Source. Used for addressing files in the remote data source.
 	relativePath string

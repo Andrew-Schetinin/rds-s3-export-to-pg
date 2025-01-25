@@ -1,7 +1,8 @@
-package main
+package config
 
 import (
 	"context"
+	"dbrestore/utils"
 	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -188,7 +189,7 @@ func (c *Config) loadFromArguments() {
 	flag.Parse()
 
 	// the logger initialization should happen first of all
-	initLogger(jsonLogs != nil && *jsonLogs, developmentLogs != nil && *developmentLogs,
+	utils.InitLogger(jsonLogs != nil && *jsonLogs, developmentLogs != nil && *developmentLogs,
 		verboseLogs != nil && *verboseLogs)
 
 	flag.Usage = func() {
@@ -303,17 +304,17 @@ func (c *Config) override(argsInstance *Config) {
 	}
 }
 
-// tableNameInSet checks if a given table name exists in the provided set and determines if the set is non-empty.
+// TableNameInSet checks if a given table name exists in the provided set and determines if the set is non-empty.
 // Both the input fullTableName and the configuration tables set can contain optional schema names.
 // In order to be found, the table name must fully match, while schema name is optional -
 // it must only match if both schemas are specified.
-func (c *Config) tableNameInSet(tables map[string]struct{}, fullTableName string) (found bool, notEmpty bool) {
+func (c *Config) TableNameInSet(tables map[string]struct{}, fullTableName string) (found bool, notEmpty bool) {
 	notEmpty = len(tables) > 0
 	found = false
 	if notEmpty {
-		schema, table := SplitFullTableName(fullTableName)
+		schema, table := utils.SplitFullTableName(fullTableName)
 		for testFullTableName := range tables {
-			configSchema, configTable := SplitFullTableName(testFullTableName)
+			configSchema, configTable := utils.SplitFullTableName(testFullTableName)
 			// table name must fully match, while schema name is optional - it must only match if both schemas are specified
 			if configTable == table && (configSchema == schema || schema == "" || configSchema == "") {
 				found = true

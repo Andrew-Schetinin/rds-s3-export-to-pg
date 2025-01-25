@@ -39,7 +39,7 @@ func convertToCSVReader(ctx context.Context, source *ParquetReader) (io.Reader, 
 		defer func(pw *io.PipeWriter) {
 			err := pw.Close()
 			if err != nil {
-				logger.Error("Error closing pipe writer", zap.Error(err))
+				log.Error("Error closing pipe writer", zap.Error(err))
 			}
 		}(pw) // Close the writer when done
 
@@ -50,13 +50,13 @@ func convertToCSVReader(ctx context.Context, source *ParquetReader) (io.Reader, 
 			case <-ctx.Done(): // Check for cancellation
 				csvWriter.Flush()
 				if err := csvWriter.Error(); err != nil {
-					logger.Error("Error during flush after cancellation", zap.Error(err))
+					log.Error("Error during flush after cancellation", zap.Error(err))
 				}
 				return // Exit goroutine if context is cancelled
 			default:
 				values, err := source.Values()
 				if err != nil {
-					logger.Error("Error getting values", zap.Error(err))
+					log.Error("Error getting values", zap.Error(err))
 					return // Exit goroutine on error
 				}
 
@@ -75,19 +75,19 @@ func convertToCSVReader(ctx context.Context, source *ParquetReader) (io.Reader, 
 				}
 
 				if err := csvWriter.Write(record); err != nil {
-					logger.Error("Error writing CSV record", zap.Error(err))
+					log.Error("Error writing CSV record", zap.Error(err))
 					return // Exit goroutine on error
 				}
 			}
 		}
 
 		if err := source.Err(); err != nil {
-			logger.Error("Error from source", zap.Error(err))
+			log.Error("Error from source", zap.Error(err))
 		}
 
 		csvWriter.Flush()
 		if err := csvWriter.Error(); err != nil {
-			logger.Error("Error flushing CSV writer", zap.Error(err))
+			log.Error("Error flushing CSV writer", zap.Error(err))
 		}
 	}()
 
@@ -113,10 +113,10 @@ func wrapPipeReaderWithProcessing(ctx context.Context, pr *io.PipeReader, proces
 	go func() {
 		defer func() {
 			if err := pr.Close(); err != nil {
-				logger.Error("Error closing original pipe reader", zap.Error(err))
+				log.Error("Error closing original pipe reader", zap.Error(err))
 			}
 			if err := w.Close(); err != nil {
-				logger.Error("Error closing new pipe writer", zap.Error(err))
+				log.Error("Error closing new pipe writer", zap.Error(err))
 			}
 		}()
 
@@ -124,13 +124,13 @@ func wrapPipeReaderWithProcessing(ctx context.Context, pr *io.PipeReader, proces
 		for {
 			select {
 			case <-ctx.Done():
-				logger.Info("Context canceled in wrapPipeReaderWithProcessing")
+				log.Info("Context canceled in wrapPipeReaderWithProcessing")
 				return
 			default:
 				n, err := pr.Read(buf)
 				if err != nil {
 					if err != io.EOF {
-						logger.Error("Error reading from original pipe", zap.Error(err))
+						log.Error("Error reading from original pipe", zap.Error(err))
 					}
 					return
 				}
@@ -142,7 +142,7 @@ func wrapPipeReaderWithProcessing(ctx context.Context, pr *io.PipeReader, proces
 				// Write the processed data to the new pipe writer
 				_, err = w.Write([]byte(processedData))
 				if err != nil {
-					logger.Error("Error writing to new pipe", zap.Error(err))
+					log.Error("Error writing to new pipe", zap.Error(err))
 					return
 				}
 			}

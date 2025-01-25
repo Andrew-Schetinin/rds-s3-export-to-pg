@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"go.uber.org/zap"
 	"os"
 )
 
@@ -18,7 +18,7 @@ func (l S3Source) Dispose(file FileInfo) {
 	if file.temp {
 		err := os.Remove(file.localPath) // Delete the file
 		if err != nil {
-			log.Printf("Failed to delete file: %v", err)
+			log.Error("Failed to delete file: %v", zap.Error(err))
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	config2 "dbrestore/config"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -51,11 +52,11 @@ type SourceReader struct {
 	source Source
 
 	// config holds the application configuration, important for the parsing process.
-	config *Config
+	config *config2.Config
 }
 
 // NewSourceReader initializes a SourceReader with the given Source instance.
-func NewSourceReader(config *Config, source Source) SourceReader {
+func NewSourceReader(config *config2.Config, source Source) SourceReader {
 	return SourceReader{config: config, source: source}
 }
 
@@ -92,9 +93,9 @@ func (r *SourceReader) iterateOverTables(databaseTables []string) (ret ParquetFi
 	for tableName, isPresent := range tableMap {
 		if !isPresent {
 			if r.tableIgnored(tableName) {
-				logger.Debug("iterateOverTables(): the table is ignored", zap.String("table name", tableName))
+				log.Debug("iterateOverTables(): the table is ignored", zap.String("table name", tableName))
 			} else {
-				logger.Error("iterateOverTables(): missing table in source files",
+				log.Error("iterateOverTables(): missing table in source files",
 					zap.String("table name", tableName))
 				errorCount++
 			}
@@ -110,7 +111,7 @@ func (r *SourceReader) iterateOverTables(databaseTables []string) (ret ParquetFi
 func (r *SourceReader) processFile(relativePath string, tableMap *map[string]bool) (ret ParquetFileInfoList, err error) {
 	fileInfo := r.source.getFile(relativePath)
 	defer r.source.Dispose(fileInfo)
-	logger.Debug("processFile()", zap.String("fileInfo.localPath", fileInfo.localPath))
+	log.Debug("processFile()", zap.String("fileInfo.localPath", fileInfo.localPath))
 
 	// Open the JSON file for reading
 	file, err := os.Open(fileInfo.localPath)
@@ -120,7 +121,7 @@ func (r *SourceReader) processFile(relativePath string, tableMap *map[string]boo
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			logger.Error("processFile(): failed to close the file", zap.String("filePath", file.Name()),
+			log.Error("processFile(): failed to close the file", zap.String("filePath", file.Name()),
 				zap.Error(err))
 		}
 	}(file)
@@ -201,20 +202,20 @@ func (r *SourceReader) processFile(relativePath string, tableMap *map[string]boo
 			if exists {
 				if (*tableMap)[targetStr] {
 					errorCount++
-					logger.Error("processFile() the table is duplicate in source files",
+					log.Error("processFile() the table is duplicate in source files",
 						zap.String("table name", targetStr), zap.Int("column count", columnCount))
 				} else {
 					(*tableMap)[targetStr] = true
-					logger.Debug("processFile()", zap.String("table name", targetStr),
+					log.Debug("processFile()", zap.String("table name", targetStr),
 						zap.Int("column count", columnCount))
 				}
 			} else if !ignore {
 				errorCount++
-				logger.Error("processFile() the table is not found in the database",
+				log.Error("processFile() the table is not found in the database",
 					zap.String("table name", targetStr), zap.Int("column count", columnCount))
 			} else {
 				(*tableMap)[targetStr] = true // add this table name to the set to avoid errors
-				logger.Debug("processFile() the table is ignored", zap.String("table name", targetStr))
+				log.Debug("processFile() the table is ignored", zap.String("table name", targetStr))
 			}
 		}
 	}
@@ -308,9 +309,9 @@ func (r *SourceReader) listDatabases() error {
 	if err != nil || len(folders) <= 0 {
 		return fmt.Errorf("error reading the database subfolders: %w", err)
 	}
-	logger.Info(fmt.Sprintf("Found %d database folder(s)", len(folders)))
+	log.Info(fmt.Sprintf("Found %d database folder(s)", len(folders)))
 	for _, folder := range folders {
-		logger.Info(folder)
+		log.Info(folder)
 	}
 	return nil
 }
@@ -322,7 +323,7 @@ func (r *SourceReader) listTableListFiles() (files []string, err error) {
 	if err != nil || len(files) <= 0 {
 		err = fmt.Errorf("error reading the table list: %w", err)
 	} else {
-		logger.Debug("listTableListFiles()", zap.Int("files.len", len(files)))
+		log.Debug("listTableListFiles()", zap.Int("files.len", len(files)))
 	}
 	return
 }
@@ -330,7 +331,7 @@ func (r *SourceReader) listTableListFiles() (files []string, err error) {
 func (r *SourceReader) validateExportInfo() (err error) {
 	info := fmt.Sprintf("export_info_%s.json", r.source.getSnapshotName())
 	exportInfoFile := r.source.getFile(info)
-	logger.Debug("iterateOverTables()", zap.String("exportInfoFile.localPath", exportInfoFile.localPath))
+	log.Debug("iterateOverTables()", zap.String("exportInfoFile.localPath", exportInfoFile.localPath))
 	defer r.source.Dispose(exportInfoFile)
 
 	// Read the complete file to a string in memory
@@ -347,7 +348,7 @@ func (r *SourceReader) validateExportInfo() (err error) {
 	//fmt.Printf("Parsed JSON: %v\n", data)
 
 	snapshotName := r.source.getSnapshotName()
-	logger.Debug("iterateOverTables()", zap.String("snapshotName", snapshotName))
+	log.Debug("iterateOverTables()", zap.String("snapshotName", snapshotName))
 
 	exportTaskIdentifier, ok := data["exportTaskIdentifier"]
 	if !ok {

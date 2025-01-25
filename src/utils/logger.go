@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"go.uber.org/zap"
@@ -7,8 +7,8 @@ import (
 	"os"
 )
 
-// logger shared logger for the whole program
-var logger, _ = zap.NewDevelopment() // the default logger
+// Logger shared logger for the whole program
+var Logger, _ = zap.NewDevelopment() // the default logger
 
 // init Clean the logger at the end
 func init() {
@@ -23,22 +23,22 @@ func setupShutdownHook() {
 		if err != nil {
 			log.Fatal("ERROR syncing the logger: ", err)
 		}
-	}(logger) // Flushes buffer, if any
+	}(Logger) // Flushes buffer, if any
 }
 
-// initLogger initializes the global logger with given options for JSON formatting, development mode, and verbosity.
-func initLogger(json bool, dev bool, verbose bool) {
+// InitLogger initializes the global logger with given options for JSON formatting, development mode, and verbosity.
+func InitLogger(json bool, dev bool, verbose bool) {
 	if json {
 		if verbose {
-			logger, _ = zap.NewProduction(zap.IncreaseLevel(zap.DebugLevel))
+			Logger, _ = zap.NewProduction(zap.IncreaseLevel(zap.DebugLevel))
 		} else {
-			logger, _ = zap.NewProduction()
+			Logger, _ = zap.NewProduction()
 		}
 	} else if dev {
 		if verbose {
-			logger, _ = zap.NewDevelopment()
+			Logger, _ = zap.NewDevelopment()
 		} else {
-			logger, _ = zap.NewDevelopment(zap.IncreaseLevel(zap.InfoLevel))
+			Logger, _ = zap.NewDevelopment(zap.IncreaseLevel(zap.InfoLevel))
 		}
 	} else {
 		// Disable timestamps by setting log flags to 0.
@@ -69,7 +69,7 @@ func initLogger(json bool, dev bool, verbose bool) {
 			level,   // Log everything from DEBUG and above
 		)
 
-		logger = zap.New(core, zap.WithCaller(false), zap.AddStacktrace(zapcore.ErrorLevel))
+		Logger = zap.New(core, zap.WithCaller(false), zap.AddStacktrace(zapcore.ErrorLevel))
 	}
 	setupShutdownHook()
 }
