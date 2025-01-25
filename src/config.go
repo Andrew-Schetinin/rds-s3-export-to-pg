@@ -40,6 +40,10 @@ type Config struct {
 	// in the destination database (with or without schema names); this can be useful in cases of partitioned tables.
 	IgnoreMissingTablePrefixes map[string]struct{}
 
+	// SkipNotEmpty skips all tables that are not empty in the target database - it allows loading data incrementally.
+	// Note that it may cause data loss if there are multiple Parquet files and some failed to load.
+	SkipNotEmpty bool
+
 	// LocalDir specifies the localPath to the local directory containing Parquet files, used if no S3 bucket is provided.
 	LocalDir string
 
@@ -163,6 +167,9 @@ func (c *Config) loadFromArguments() {
 	ignoreMissingTablePrefixes := flag.String("ignore-missing-tables", "",
 		"specifies a comma-separated list of table name prefixes to be ignored if missing "+
 			"in the destination database (with or without schema names); this can be useful in cases of partitioned tables")
+	SkipNotEmpty := flag.Bool("skip-not-empty", false,
+		"skips all tables that are not empty in the target database - it allows loading data incrementally; "+
+			"note that it may cause data loss if there are multiple Parquet files and some failed to load.")
 
 	awsAccessKey := flag.String("aws-access-key", "", "AWS Access Key (required when using S3 bucket)")
 	awsSecretKey := flag.String("aws-secret-key", "", "AWS Secret Key (required when using S3 bucket)")
@@ -203,6 +210,9 @@ func (c *Config) loadFromArguments() {
 	}
 	if truncateAllCommand != nil && *truncateAllCommand {
 		c.TruncateAllCommand = true
+	}
+	if SkipNotEmpty != nil && *SkipNotEmpty {
+		c.SkipNotEmpty = true
 	}
 	if isNotBlank(sourceDatabase) {
 		c.SourceDatabase = *sourceDatabase

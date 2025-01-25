@@ -17,6 +17,21 @@ import (
 // between nil and "" values, which is critical for correct processing in PostgreSQL.
 const NeverHappeningCharacter = "\x7F"
 
+// convertToCSVReader converts a ParquetReader source into an io.Reader providing CSV data,
+// utilizing a streaming approach (with a pipe inside).
+// It processes rows from the ParquetReader and writes them as CSV records to a pipe
+// for consumption by the returned reader.
+// Context cancellation is supported to terminate processing early,
+// ensuring the PipeWriter and CSV writer are closed properly.
+// The returned CSV stream is specially prepared for PostgreSQL, so that NULL values and empty strings
+// are recognized properly by PostgreSQL.
+// This is not quite supported by the "encoding/csv" package and requires a dirty (and inefficient) hack
+// (I could not find a better approach).
+// When passing nil values to "encoding/csv", we replace them with unquoted empty strings -
+// PostgreSQL recognizes those as NULLs.
+// But when passing empty strings, we replace them with NeverHappeningCharacter,
+// and after "encoding/csv" generates our CSV, we replace this character with double quotes -
+// PostgreSQL recognizes those as empty strings and not NULLs.
 func convertToCSVReader(ctx context.Context, source *ParquetReader) (io.Reader, error) {
 	pr, pw := io.Pipe() // Create a pipe for streaming
 
@@ -89,6 +104,9 @@ func replaceNeverHappeningCharacter(s string) string {
 	return strings.ReplaceAll(s, NeverHappeningCharacter, "\"\"")
 }
 
+// wrapPipeReaderWithProcessing takes a context, a PipeReader, and a processing function
+// It returns a new PipeReader with data processed by the provided function before being read.
+// Handles context cancellation and errors during reading and writing operations.
 func wrapPipeReaderWithProcessing(ctx context.Context, pr *io.PipeReader, processFunc func(string) string) *io.PipeReader {
 	r, w := io.Pipe() // Create another pipe for wrapping
 
@@ -114,7 +132,7 @@ func wrapPipeReaderWithProcessing(ctx context.Context, pr *io.PipeReader, proces
 					if err != io.EOF {
 						logger.Error("Error reading from original pipe", zap.Error(err))
 					}
-					break
+					return
 				}
 
 				// Preprocess the data using the supplied function
@@ -125,7 +143,7 @@ func wrapPipeReaderWithProcessing(ctx context.Context, pr *io.PipeReader, proces
 				_, err = w.Write([]byte(processedData))
 				if err != nil {
 					logger.Error("Error writing to new pipe", zap.Error(err))
-					break
+					return
 				}
 			}
 		}

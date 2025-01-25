@@ -28,7 +28,7 @@ func (m *FieldMapper) shouldSkip() (reason string, skip bool) {
 	}
 	size := m.Writer.getTableSize(m.Info.TableName)
 	if size > 0 {
-		return ReasonNotEmpty, false
+		return ReasonNotEmpty, m.Config.SkipNotEmpty
 	}
 	return "", false
 }
@@ -68,8 +68,15 @@ func (m *FieldMapper) transform(x parquet.Value) (value any, err error) {
 	if column.OriginalType == "integer" {
 		return x.Int32(), nil
 	}
+	if column.OriginalType == "smallint" {
+		// there is no way to return Int16, but we assume it should not be out of bounds
+		return x.Int32(), nil
+	}
 	if column.OriginalType == "double precision" {
 		return x.Double(), nil
+	}
+	if column.OriginalType == "real" {
+		return x.Float(), nil
 	}
 	if column.OriginalType == "character varying" {
 		return stringValue, nil
