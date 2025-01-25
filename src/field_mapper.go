@@ -52,12 +52,15 @@ func (m *FieldMapper) getRows(file FileInfo) *ParquetReader {
 func (m *FieldMapper) transform(x parquet.Value) (value any, err error) {
 	columnIndex := x.Column()
 	column := m.Info.Columns[columnIndex]
-	s := x.String()
-	logger.Debug("transform", zap.Any("value", x), zap.String("string", s),
+	stringValue := x.String()
+	logger.Debug("transform", zap.Any("value", x), zap.String("string", stringValue),
 		zap.Any("type", x.Kind()), zap.Int("columnIndex", columnIndex),
 		zap.String("column", column.ColumnName), zap.String("originalType", column.OriginalType))
 	if x.IsNull() {
 		return nil, nil
+	}
+	if column.OriginalType == "boolean" {
+		return x.Boolean(), nil
 	}
 	if column.OriginalType == "bigint" {
 		return x.Int64(), nil
@@ -65,17 +68,41 @@ func (m *FieldMapper) transform(x parquet.Value) (value any, err error) {
 	if column.OriginalType == "integer" {
 		return x.Int32(), nil
 	}
+	if column.OriginalType == "double precision" {
+		return x.Double(), nil
+	}
 	if column.OriginalType == "character varying" {
-		return x.String(), nil
+		return stringValue, nil
+	}
+	if column.OriginalType == "text" {
+		return stringValue, nil
 	}
 	if column.OriginalType == "timestamp without time zone" {
-		//panic("unexpected column type: timestamp without time zone")
-		return x.String(), nil
+		return stringValue, nil
+	}
+	if column.OriginalType == "date" {
+		return stringValue, nil
 	}
 	if column.OriginalType == "jsonb" {
-		//panic("unexpected column type: jsonb")
-		return x.String(), nil
+		return stringValue, nil
+	}
+	if column.OriginalType == "USER-DEFINED" && column.ExpectedExportedType == "binary (UTF8)" {
+		// IMPORTANT: this does not work with the binary format for HSTORE fields,
+		// even though sources in Internet say it should, and therefore we must use CSV format instead
+		return stringValue, nil
 	}
 	panic("unexpected column type: " + column.OriginalType)
-	return s, nil
+	return stringValue, nil
+}
+
+// hasUserDefinedColumn checks if any column in the Parquet file has an original type of "USER-DEFINED".
+// This format does not work with the binary COPY FROM by some reason, even though people say it should.
+// And it forces us to fall back to CSV.
+func (m *FieldMapper) hasUserDefinedColumn() bool {
+	for _, column := range m.Info.Columns {
+		if column.OriginalType == "USER-DEFINED" {
+			return true
+		}
+	}
+	return false
 }

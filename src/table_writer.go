@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -594,20 +595,79 @@ func (w *DatabaseWriter) writeTablePart(source Source, mapper *FieldMapper, rela
 			err = fmt.Errorf("skipping empty Parquet file '%s': %w", relativePath, copyFromSource.lastError)
 		}
 	} else {
+		var oldTableSize, newBatchCopySize, newTableSize int64
+		oldTableSize = int64(w.getTableSize(mapper.Info.TableName))
+		newBatchCopySize = copyFromSource.rowCount
+		logger.Debug("Writing table part", zap.String("file", relativePath),
+			zap.String("table", mapper.Info.TableName), zap.Int64("old_table_size", oldTableSize),
+			zap.Int64("newBatchCopySize", newBatchCopySize))
 		var copied int64
-		copied, err = w.db.CopyFrom(
-			context.Background(),
-			CreatePgxIdentifier(mapper.Info.TableName),
-			mapper.getFieldNames(), //[]string{"first_name", "last_name", "age"},
-			copyFromSource,         // pgx.CopyFromRows(rows),
-		)
+		if mapper.hasUserDefinedColumn() {
+			// HSTORE format does not work in the binary COPY FROM protocol by some reason, so using CSV instead
+			copied, err = w.copyFromCSV(mapper, copyFromSource)
+		} else {
+			// by default, we prefer the binary format - it is the standard format in pgx
+			copied, err = w.copyFromBinary(mapper, copyFromSource)
+		}
 		if err != nil && err != io.EOF {
-			err = fmt.Errorf("writing the table '%s' failed: %w", mapper.Info.TableName, err)
+			err = fmt.Errorf("writing the table '%s' failed for %d rows: %w",
+				mapper.Info.TableName, copyFromSource.rowCount, err)
 		} else {
 			ret += int(copied)
 			err = nil // to erase possible io.EOF
 		}
+		if err == nil { // validate that all rows from Parquet were written to the table
+			newTableSize = int64(w.getTableSize(mapper.Info.TableName))
+			if newTableSize != (oldTableSize + newBatchCopySize) {
+				err = fmt.Errorf("table size mismatch: expected = %d, new actual size = %d",
+					oldTableSize, newTableSize)
+			}
+		}
 	}
+	return
+}
+
+func (w *DatabaseWriter) copyFromBinary(mapper *FieldMapper, copyFromSource *ParquetReader) (ret int64, err error) {
+	ret, err = w.db.CopyFrom(
+		context.Background(),
+		CreatePgxIdentifier(mapper.Info.TableName),
+		mapper.getFieldNames(), //[]string{"first_name", "last_name", "age"},
+		copyFromSource,         // pgx.CopyFromRows(rows),
+	)
+	return
+}
+
+func (w *DatabaseWriter) copyFromCSV(mapper *FieldMapper, copyFromSource *ParquetReader) (ret int64, err error) {
+	pgConn := w.db.PgConn()
+
+	quotedTableName := CreatePgxIdentifier(mapper.Info.TableName).Sanitize()
+	buf := &bytes.Buffer{}
+	for i, cn := range mapper.Info.Columns {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(CreatePgxIdentifier(cn.ColumnName).Sanitize())
+	}
+	quotedColumnNames := buf.String()
+
+	sqlQuery := fmt.Sprintf(copyTableFromCSV, quotedTableName, quotedColumnNames)
+
+	csvReader, err := convertToCSVReader(context.Background(), copyFromSource)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create a CSV reader: %w", err)
+	}
+
+	from, err := pgConn.CopyFrom(context.Background(), csvReader, sqlQuery)
+	if err != nil {
+		return 0, fmt.Errorf("failed to execute '%s': %w", sqlQuery, err)
+	}
+
+	logger.Info("Copying from CSV", zap.Int64("rows_copied", from.RowsAffected()),
+		zap.String("message", from.String()), zap.Bool("insert", from.Insert()),
+		zap.Bool("update", from.Update()), zap.Bool("delete", from.Delete()),
+		zap.Bool("select", from.Select()))
+
+	ret = from.RowsAffected()
 	return
 }
 

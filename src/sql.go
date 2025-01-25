@@ -56,3 +56,5 @@ const deferConstraints = "SET CONSTRAINTS ALL DEFERRED;"
 const truncateTable = "TRUNCATE TABLE %s CASCADE;"
 
 const checkIfTableIsNotEmpty = "SELECT EXISTS (SELECT 1 FROM %s LIMIT 1)"
+
+const copyTableFromCSV = "COPY %s (%s) FROM STDIN WITH (FORMAT CSV);"
