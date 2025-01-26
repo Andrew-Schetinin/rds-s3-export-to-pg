@@ -20,11 +20,12 @@ Currently, the project is in active development and is not ready yet for usage.
 
 Planned action items:
 
-1. (a must) #1 - Implement support for partitioned tables (AWS RDS exports ).
-2. (a must) #2 - Support additional PostgreSQL data types - for example PostGIS geography.
-3. (nice to have) #3 - Implement S3 configurations and loading files from there.
-4. (future) #4 - Implement a complete integration test with multiple samples of different data types and PostgreSQL features.
-5. (future) #5 - Implement support for DAG cycles (cycled references between PostgreSQL tables)
+1. (a must) [#1](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/1) - Implement support for partitioned tables (AWS RDS exports ).
+2. (a must) [#2](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/2) - Support additional PostgreSQL data types - for example PostGIS geography.
+3. (nice to have) [#3](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/3) - Implement S3 configurations and loading files from there.
+4. (nice to have) [#6](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/6) - Implement releases' compilation for different platforms
+5. (future) [#4](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/4) - Implement a complete integration test with multiple samples of different data types and PostgreSQL features.
+6. (future) [#5](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/5) - Implement support for DAG cycles (cycled references between PostgreSQL tables)
 
 ## 1.2. Supported platforms
 
