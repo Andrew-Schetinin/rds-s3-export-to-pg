@@ -33,7 +33,7 @@ type ConstraintInfo struct {
 
 // DatabaseWriter represents a utility for writing data to a database through a specified connection string.
 type DatabaseWriter struct {
-	//connStr := "postgres://andrews:asd@localhost:5432/tms_test?sslmode=disable"
+	//connStr := "postgres://andrews:asd@localhost:5432/test?sslmode=disable"
 	ConnectionString string
 	db               *pgx.Conn //*sql.DB
 	regExPrimary     *regexp.Regexp
@@ -539,7 +539,7 @@ func (w *DatabaseWriter) getTableSize(tableName string) int {
 
 func (w *DatabaseWriter) writeTableData(source source.Source, mapper *FieldMapper) (ret int, err error) {
 	// TODO: replace the database name with a name read from the configuration
-	relativePath := fmt.Sprintf("%s/%s", "tms_test", mapper.Info.TableName)
+	relativePath := fmt.Sprintf("%s/%s", "test", mapper.Info.TableName)
 	allFiles, err := source.ListFilesRecursively(relativePath)
 	slices.Sort(allFiles)
 
