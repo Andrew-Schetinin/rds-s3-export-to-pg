@@ -590,18 +590,18 @@ func (w *DatabaseWriter) writeTableData(source source.Source, mapper *FieldMappe
 	return ret, nil
 }
 
-func (w *DatabaseWriter) writeTablePart(source source.Source, mapper *FieldMapper, relativePath string) (ret int, err error) {
-	file := source.GetFile(relativePath)
-	copyFromSource := mapper.getRows(file)
+func (w *DatabaseWriter) writeTablePart(src source.Source, mapper *FieldMapper, relativePath string) (ret int, err error) {
+	file := src.GetFile(relativePath)
+	copyFromSource := source.NewParquetReader(file, mapper)
 	if copyFromSource.IsEmpty() {
 		log.Debug("Skipping empty Parquet file", zap.String("file", relativePath))
-		if copyFromSource.lastError != nil && copyFromSource.lastError != io.EOF {
-			err = fmt.Errorf("skipping empty Parquet file '%s': %w", relativePath, copyFromSource.lastError)
+		if copyFromSource.LastError() != nil && copyFromSource.LastError() != io.EOF {
+			err = fmt.Errorf("skipping empty Parquet file '%s': %w", relativePath, copyFromSource.LastError())
 		}
 	} else {
 		var oldTableSize, newBatchCopySize, newTableSize int64
 		oldTableSize = int64(w.getTableSize(mapper.Info.TableName))
-		newBatchCopySize = copyFromSource.rowCount
+		newBatchCopySize = copyFromSource.RowCount()
 		log.Debug("Writing table part", zap.String("file", relativePath),
 			zap.String("table", mapper.Info.TableName), zap.Int64("old_table_size", oldTableSize),
 			zap.Int64("newBatchCopySize", newBatchCopySize))
@@ -615,7 +615,7 @@ func (w *DatabaseWriter) writeTablePart(source source.Source, mapper *FieldMappe
 		}
 		if err != nil && err != io.EOF {
 			err = fmt.Errorf("writing the table '%s' failed for %d rows: %w",
-				mapper.Info.TableName, copyFromSource.rowCount, err)
+				mapper.Info.TableName, copyFromSource.RowCount(), err)
 		} else {
 			ret += int(copied)
 			err = nil // to erase possible io.EOF
@@ -631,7 +631,7 @@ func (w *DatabaseWriter) writeTablePart(source source.Source, mapper *FieldMappe
 	return
 }
 
-func (w *DatabaseWriter) copyFromBinary(mapper *FieldMapper, copyFromSource *ParquetReader) (ret int64, err error) {
+func (w *DatabaseWriter) copyFromBinary(mapper *FieldMapper, copyFromSource *source.ParquetReader) (ret int64, err error) {
 	ret, err = w.db.CopyFrom(
 		context.Background(),
 		utils.CreatePgxIdentifier(mapper.Info.TableName),
@@ -641,7 +641,7 @@ func (w *DatabaseWriter) copyFromBinary(mapper *FieldMapper, copyFromSource *Par
 	return
 }
 
-func (w *DatabaseWriter) copyFromCSV(mapper *FieldMapper, copyFromSource *ParquetReader) (ret int64, err error) {
+func (w *DatabaseWriter) copyFromCSV(mapper *FieldMapper, copyFromSource *source.ParquetReader) (ret int64, err error) {
 	pgConn := w.db.PgConn()
 
 	quotedTableName := utils.CreatePgxIdentifier(mapper.Info.TableName).Sanitize()

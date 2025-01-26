@@ -43,14 +43,6 @@ func (m *FieldMapper) getFieldNames() []string {
 	return names
 }
 
-func (m *FieldMapper) getRows(file source.FileInfo) *ParquetReader {
-	reader := ParquetReader{
-		fileInfo: file,
-		mapper:   m,
-	}
-	return &reader
-}
-
 // Transform implements the interface source.Transformer
 func (m *FieldMapper) Transform(x parquet.Value) (value any, err error) {
 	columnIndex := x.Column()

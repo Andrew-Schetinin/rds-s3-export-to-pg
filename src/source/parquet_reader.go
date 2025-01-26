@@ -1,7 +1,6 @@
-package main
+package source
 
 import (
-	"dbrestore/source"
 	"fmt"
 	"github.com/parquet-go/parquet-go"
 	"go.uber.org/zap"
@@ -13,10 +12,10 @@ import (
 // It implements the interface pgx.CopyFromSource for reading rows in the format supported by CopyFrom() function.
 type ParquetReader struct {
 	// fileInfo contains metadata and details of the file to be processed, such as its path, size, etc.
-	fileInfo source.FileInfo
+	fileInfo FileInfo
 
 	// mapper is a reference to the source.Transformer used to map Parquet fields to a defined schema of the target table.
-	mapper source.Transformer
+	mapper Transformer
 
 	// isOpen indicates whether the ParquetReader is currently open and ready for processing.
 	isOpen bool
@@ -53,6 +52,15 @@ type NextRow struct {
 
 	// err represents an error encountered during the processing of the current row, or nil if no error occurred.
 	err error
+}
+
+// NewParquetReader creates a new instance of ParquetReader using the supplied FileInfo and Transformer.
+func NewParquetReader(file FileInfo, transformer Transformer) *ParquetReader {
+	reader := ParquetReader{
+		fileInfo: file,
+		mapper:   transformer,
+	}
+	return &reader
 }
 
 // IsEmpty returns true if the source Parquet file is empty, or if there is an error in the processing
@@ -98,7 +106,7 @@ func (r *ParquetReader) Err() error {
 }
 
 // Open initializes the ParquetReader with the specified FileInfo and opens the associated Parquet file for reading.
-func (r *ParquetReader) Open(fileInfo source.FileInfo) error {
+func (r *ParquetReader) Open(fileInfo FileInfo) error {
 	if r.isOpen || r.wasClosed {
 		return fmt.Errorf("the input file ParquetReader had been already open")
 	}
@@ -230,4 +238,14 @@ func (r *ParquetReader) OpenAndStartReadingIfNotDoneYet() {
 			}
 		}
 	}
+}
+
+// LastError returns the most recent error encountered by the ParquetReader or nil if no errors have occurred.
+func (r *ParquetReader) LastError() error {
+	return r.lastError
+}
+
+// RowCount returns the total number of rows in the Parquet file being processed by the ParquetReader.
+func (r *ParquetReader) RowCount() int64 {
+	return r.rowCount
 }
