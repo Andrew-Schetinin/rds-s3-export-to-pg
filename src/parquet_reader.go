@@ -10,12 +10,13 @@ import (
 )
 
 // ParquetReader is a structure for reading and processing Parquet files while mapping data to a defined schema.
+// It implements the interface pgx.CopyFromSource for reading rows in the format supported by CopyFrom() function.
 type ParquetReader struct {
 	// fileInfo contains metadata and details of the file to be processed, such as its path, size, etc.
 	fileInfo source.FileInfo
 
-	// mapper is a reference to the FieldMapper used to map Parquet fields to a defined schema of the target table.
-	mapper *FieldMapper
+	// mapper is a reference to the source.Transformer used to map Parquet fields to a defined schema of the target table.
+	mapper source.Transformer
 
 	// isOpen indicates whether the ParquetReader is currently open and ready for processing.
 	isOpen bool
@@ -139,8 +140,8 @@ func (r *ParquetReader) Close() (err error) {
 	return
 }
 
-// StartReading reads rows from a parquet file using a FieldMapper and starts a goroutine to process rows asynchronously.
-func (r *ParquetReader) StartReading(mapper *FieldMapper) (int, error) {
+// StartReading reads rows from a parquet file using a transformer and starts a goroutine to process rows asynchronously.
+func (r *ParquetReader) StartReading() (int, error) {
 	log.Debug("f.Schema(): ", zap.String("name", r.parquetFile.Schema().Name()))
 	for i, column := range r.parquetFile.Schema().Columns() {
 		for j, path := range column {
@@ -191,7 +192,7 @@ func (r *ParquetReader) StartReading(mapper *FieldMapper) (int, error) {
 					err: err,
 				}
 				for i, x := range singleRow {
-					rowData.row[i], err = mapper.transform(x)
+					rowData.row[i], err = r.mapper.Transform(x)
 					if err != nil {
 						log.Error("Error transforming row", zap.Int("index", i),
 							zap.Any("value", x), zap.Any("row", row), zap.Error(err))
@@ -219,7 +220,7 @@ func (r *ParquetReader) OpenAndStartReadingIfNotDoneYet() {
 		if !r.isOpen && !r.wasClosed {
 			r.lastError = r.Open(r.fileInfo)
 			if r.lastError == nil {
-				count, err := r.StartReading(r.mapper)
+				count, err := r.StartReading()
 				log.Debug("ParquetReader.Next(): r.IsEmpty()", zap.Int("count", count), zap.Error(err))
 				if err != nil {
 					r.lastError = err
