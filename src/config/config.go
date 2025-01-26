@@ -52,16 +52,32 @@ type Config struct {
 	// and the localPath to the exported snapshot. Used if no local directory is provided.
 	AWSBucketPath string
 
+	// AWSAccessKey specifies the AWS access key used for authentication with AWS services.
 	AWSAccessKey string
-	AWSSecretKey string
-	AWSRegion    string
 
-	DBHost     string
-	DBPort     int
-	DBName     string
-	DBUser     string
+	// AWSSecretKey represents the secret key used for AWS authentication.
+	AWSSecretKey string
+
+	// AWSRegion specifies the AWS region for connecting to S3.
+	AWSRegion string
+
+	// DBHost specifies the hostname or IP address of the database server to connect to.
+	DBHost string
+
+	// DBPort specifies the port number used to connect to the database server.
+	DBPort int
+
+	// DBName specifies the name of the database to connect to - this is the destination database.
+	DBName string
+
+	// DBUser specifies the username for database authentication.
+	DBUser string
+
+	// DBPassword holds the database password for authentication.
 	DBPassword string
-	DBSSLMode  bool
+
+	// DBSSLMode specifies whether SSL mode is enabled for database connections.
+	DBSSLMode bool
 
 	// AWSConfig AWS configuration in case we load it from a configuration file.
 	// we should not use complex types because reflection will stop working - pointers are okay
@@ -75,6 +91,8 @@ var (
 	once     sync.Once
 )
 
+// GetConfig initializes and returns a singleton instance of the Config struct with values loaded from various sources.
+// Command line arguments override all other configuration sources.
 func GetConfig() *Config {
 	once.Do(func() {
 		// first read the command line arguments because they can affect the rest of the initialization
@@ -92,6 +110,7 @@ func GetConfig() *Config {
 	return instance
 }
 
+// loadFromEnv loads configuration values from environment variables and assigns them to the Config struct fields.
 func (c *Config) loadFromEnv() {
 	// Load from environment variables
 	if region := os.Getenv("AWS_REGION"); region != "" {
@@ -103,6 +122,8 @@ func (c *Config) loadFromEnv() {
 	// ... load other parameters
 }
 
+// loadFromFile loads configuration data from a file (e.g., JSON, YAML) and populates the Config struct.
+// TODO: not implemented yet
 func (c *Config) loadFromFile() {
 	// Load from a config file (e.g., JSON, YAML)
 	// You would use a library like "encoding/json" or "gopkg.in/yaml.v3" here.
@@ -112,6 +133,9 @@ func (c *Config) loadFromFile() {
 	// }
 }
 
+// loadAWSConfig loads AWS configuration using the AWS SDK, applying region from Config and environment variable overrides.
+// It initializes the AWSConfig field and logs a fatal error if loading fails.
+// TODO: not implemented yet
 func (c *Config) loadAWSConfig() {
 	// Load AWS config, allowing environment variables and shared config to override
 	var awsConfig aws.Config
