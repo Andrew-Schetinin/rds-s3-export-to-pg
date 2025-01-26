@@ -1,9 +1,10 @@
-package main
+package utils
 
 import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 	"io"
 	"strings"
@@ -17,7 +18,7 @@ import (
 // between nil and "" values, which is critical for correct processing in PostgreSQL.
 const NeverHappeningCharacter = "\x7F"
 
-// convertToCSVReader converts a ParquetReader source into an io.Reader providing CSV data,
+// ConvertToCSVReader converts a ParquetReader source into an io.Reader providing CSV data,
 // utilizing a streaming approach (with a pipe inside).
 // It processes rows from the ParquetReader and writes them as CSV records to a pipe
 // for consumption by the returned reader.
@@ -32,14 +33,14 @@ const NeverHappeningCharacter = "\x7F"
 // But when passing empty strings, we replace them with NeverHappeningCharacter,
 // and after "encoding/csv" generates our CSV, we replace this character with double quotes -
 // PostgreSQL recognizes those as empty strings and not NULLs.
-func convertToCSVReader(ctx context.Context, source *ParquetReader) (io.Reader, error) {
+func ConvertToCSVReader(ctx context.Context, source pgx.CopyFromSource) (io.Reader, error) {
 	pr, pw := io.Pipe() // Create a pipe for streaming
 
 	go func() {
 		defer func(pw *io.PipeWriter) {
 			err := pw.Close()
 			if err != nil {
-				log.Error("Error closing pipe writer", zap.Error(err))
+				Logger.Error("Error closing pipe writer", zap.Error(err))
 			}
 		}(pw) // Close the writer when done
 
@@ -50,13 +51,13 @@ func convertToCSVReader(ctx context.Context, source *ParquetReader) (io.Reader, 
 			case <-ctx.Done(): // Check for cancellation
 				csvWriter.Flush()
 				if err := csvWriter.Error(); err != nil {
-					log.Error("Error during flush after cancellation", zap.Error(err))
+					Logger.Error("Error during flush after cancellation", zap.Error(err))
 				}
 				return // Exit goroutine if context is cancelled
 			default:
 				values, err := source.Values()
 				if err != nil {
-					log.Error("Error getting values", zap.Error(err))
+					Logger.Error("Error getting values", zap.Error(err))
 					return // Exit goroutine on error
 				}
 
@@ -75,19 +76,19 @@ func convertToCSVReader(ctx context.Context, source *ParquetReader) (io.Reader, 
 				}
 
 				if err := csvWriter.Write(record); err != nil {
-					log.Error("Error writing CSV record", zap.Error(err))
+					Logger.Error("Error writing CSV record", zap.Error(err))
 					return // Exit goroutine on error
 				}
 			}
 		}
 
 		if err := source.Err(); err != nil {
-			log.Error("Error from source", zap.Error(err))
+			Logger.Error("Error from source", zap.Error(err))
 		}
 
 		csvWriter.Flush()
 		if err := csvWriter.Error(); err != nil {
-			log.Error("Error flushing CSV writer", zap.Error(err))
+			Logger.Error("Error flushing CSV writer", zap.Error(err))
 		}
 	}()
 
@@ -113,10 +114,10 @@ func wrapPipeReaderWithProcessing(ctx context.Context, pr *io.PipeReader, proces
 	go func() {
 		defer func() {
 			if err := pr.Close(); err != nil {
-				log.Error("Error closing original pipe reader", zap.Error(err))
+				Logger.Error("Error closing original pipe reader", zap.Error(err))
 			}
 			if err := w.Close(); err != nil {
-				log.Error("Error closing new pipe writer", zap.Error(err))
+				Logger.Error("Error closing new pipe writer", zap.Error(err))
 			}
 		}()
 
@@ -124,13 +125,13 @@ func wrapPipeReaderWithProcessing(ctx context.Context, pr *io.PipeReader, proces
 		for {
 			select {
 			case <-ctx.Done():
-				log.Info("Context canceled in wrapPipeReaderWithProcessing")
+				Logger.Info("Context canceled in wrapPipeReaderWithProcessing")
 				return
 			default:
 				n, err := pr.Read(buf)
 				if err != nil {
 					if err != io.EOF {
-						log.Error("Error reading from original pipe", zap.Error(err))
+						Logger.Error("Error reading from original pipe", zap.Error(err))
 					}
 					return
 				}
@@ -142,7 +143,7 @@ func wrapPipeReaderWithProcessing(ctx context.Context, pr *io.PipeReader, proces
 				// Write the processed data to the new pipe writer
 				_, err = w.Write([]byte(processedData))
 				if err != nil {
-					log.Error("Error writing to new pipe", zap.Error(err))
+					Logger.Error("Error writing to new pipe", zap.Error(err))
 					return
 				}
 			}

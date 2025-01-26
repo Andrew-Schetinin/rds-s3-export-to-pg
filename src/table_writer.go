@@ -655,7 +655,7 @@ func (w *DatabaseWriter) copyFromCSV(mapper *FieldMapper, copyFromSource *Parque
 
 	sqlQuery := fmt.Sprintf(copyTableFromCSV, quotedTableName, quotedColumnNames)
 
-	csvReader, err := convertToCSVReader(context.Background(), copyFromSource)
+	csvReader, err := utils.ConvertToCSVReader(context.Background(), copyFromSource)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create a CSV reader: %w", err)
 	}
