@@ -10,8 +10,13 @@ This command line tool allows restoring a PostgreSQL database from such an expor
 
 The program expects to have a properly exported AWS RDS snapshot at S3 or in the local file system,
 and an empty target database into which the snapshot will be restored (using a schema-only restore via pg_restore.
+
 The target database must exist because Parquet does not contain sufficient information to restore indexes, foreign references, triggers, sequences, constraints, etc.
+
 The data is loaded as efficiently as possible - it is unlikely to be as efficient as pg_restore, but it is expected to be reasonably close.
+
+The program avoids breaking referential integrity by organizing tables in a DAG (directed acyclic graph) and ordering tables, 
+using topological sorting, so that they load from referenced to referencing tables.
 
 # 1. Usage
 
