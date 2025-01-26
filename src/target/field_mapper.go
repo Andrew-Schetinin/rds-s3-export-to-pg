@@ -1,11 +1,15 @@
-package main
+package target
 
 import (
 	"dbrestore/config"
 	"dbrestore/source"
+	"dbrestore/utils"
 	"github.com/parquet-go/parquet-go"
 	"go.uber.org/zap"
 )
+
+// log a convenience wrapper to shorten code lines
+var log = utils.Logger
 
 const ReasonNotEmpty = "Table is not empty"
 const ReasonSkippedByConfig1 = "Table is not listed in --include-tables configuration"
@@ -19,7 +23,7 @@ type FieldMapper struct {
 	Config *config.Config
 }
 
-func (m *FieldMapper) shouldSkip() (reason string, skip bool) {
+func (m *FieldMapper) ShouldSkip() (reason string, skip bool) {
 	found, notEmpty := m.Config.TableNameInSet(m.Config.IncludeTables, m.Info.TableName)
 	if !found && notEmpty {
 		return ReasonSkippedByConfig1, true

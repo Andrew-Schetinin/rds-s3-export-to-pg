@@ -30,7 +30,7 @@ TBD
 
 1. Why Go?
    * Go is great for microservices and lambdas because of its resource efficiency and performance. 
-   It is also good for light-weight command line tools that need to run inside Docker like this one.
+   It is also highly suitable for light-weight command line tools that need to run inside Docker like this one.
 2. TBD
 
 # 2. Development

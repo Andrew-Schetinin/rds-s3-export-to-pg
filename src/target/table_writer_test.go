@@ -1,4 +1,4 @@
-package main
+package target
 
 import (
 	"context"
@@ -61,7 +61,7 @@ func TestCreateTestDatabase(t *testing.T) {
 		}
 		conStr := fmt.Sprintf(localConnectionString, pwd)
 
-		// connect to PostgreSQL default database (to be able to create a new test database)
+		// Connect to PostgreSQL default database (to be able to create a new test database)
 		db, err := pgx.Connect(context.Background(), conStr)
 		if err != nil {
 			t.Errorf("TestCreateTestDatabase() error: %v", err)

@@ -1,4 +1,4 @@
-package main
+package target
 
 import (
 	"bytes"
@@ -82,7 +82,7 @@ type Relation struct {
 	definition     string
 }
 
-func (w *DatabaseWriter) connect() error {
+func (w *DatabaseWriter) Connect() error {
 	log.Debug("Connecting to the database")
 	db, err := pgx.Connect(context.Background(), w.ConnectionString)
 	if err == nil && db == nil {
@@ -92,7 +92,7 @@ func (w *DatabaseWriter) connect() error {
 	return err
 }
 
-func (w *DatabaseWriter) close() {
+func (w *DatabaseWriter) Close() {
 	if w.db != nil {
 		log.Debug("Closing the database connection")
 		err := w.db.Close(context.Background())
@@ -172,7 +172,7 @@ func (w *DatabaseWriter) getConstraintList(tableName string) (ret []ConstraintIn
 	return constraints, nil
 }
 
-func (w *DatabaseWriter) writeTable(source source.Source, mapper *FieldMapper) (ret int, err error) {
+func (w *DatabaseWriter) WriteTable(source source.Source, mapper *FieldMapper) (ret int, err error) {
 	start := time.Now()
 	tableName := mapper.Info.TableName
 	indexInfos, err := w.getIndexList(tableName)
@@ -323,8 +323,8 @@ func closeTransactionInPanic(tx pgx.Tx) {
 	}
 }
 
-// getTablesOrdered retrieves a list of database tables ordered by their creation dependencies.
-func (w *DatabaseWriter) getTablesOrdered() (ret []string, err error) {
+// GetTablesOrdered retrieves a list of database tables ordered by their creation dependencies.
+func (w *DatabaseWriter) GetTablesOrdered() (ret []string, err error) {
 	log.Debug("Getting ordered tables...")
 
 	// this retrieves only the FK between tables, so some tables are missing
@@ -517,7 +517,7 @@ func (w *DatabaseWriter) getFKeys() (*dag.FKeysGraph[Relation], error) {
 	return &fkMap, nil
 }
 
-func (w *DatabaseWriter) getFieldMapper(info source.ParquetFileInfo, config *config.Config) (ret FieldMapper, err error) {
+func (w *DatabaseWriter) GetFieldMapper(info source.ParquetFileInfo, config *config.Config) (ret FieldMapper, err error) {
 	mapper := FieldMapper{
 		Info:   info,
 		Writer: w,
@@ -675,7 +675,7 @@ func (w *DatabaseWriter) copyFromCSV(mapper *FieldMapper, copyFromSource *source
 	return
 }
 
-func (w *DatabaseWriter) truncateAllTables(tables []string) (truncatedCount int, err error) {
+func (w *DatabaseWriter) TruncateAllTables(tables []string) (truncatedCount int, err error) {
 	for i := len(tables) - 1; i >= 0; i-- {
 		table := tables[i]
 		// Query to check if the table is not empty

@@ -4,6 +4,7 @@ import (
 	"context"
 	config2 "dbrestore/config"
 	source2 "dbrestore/source"
+	"dbrestore/target"
 	"dbrestore/utils"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -68,20 +69,20 @@ func main() {
 		return
 	}
 
-	writer := NewDatabaseWriter(conf.DBHost, conf.DBPort, conf.DBName, conf.DBUser, conf.DBPassword, conf.DBSSLMode)
-	err := writer.connect()
+	writer := target.NewDatabaseWriter(conf.DBHost, conf.DBPort, conf.DBName, conf.DBUser, conf.DBPassword, conf.DBSSLMode)
+	err := writer.Connect()
 	if err != nil {
 		log.Error("Error connecting to the database: ", zap.Error(err))
 		return
 	}
 	defer func() {
-		writer.close()
+		writer.Close()
 	}()
 
 	// Get the list of tables from PostgreSQL database - we can only populate these tables.
 	// The order is calculated based on relations between tables and it is very important.
 	startTime := time.Now()
-	tables, err := writer.getTablesOrdered()
+	tables, err := writer.GetTablesOrdered()
 	if err != nil {
 		log.Error("Error working with the database: ", zap.Error(err))
 		return
@@ -91,7 +92,7 @@ func main() {
 
 	if conf.TruncateAllCommand {
 		startTime2 := time.Now()
-		truncatedCount, err := writer.truncateAllTables(tables)
+		truncatedCount, err := writer.TruncateAllTables(tables)
 		if err != nil {
 			log.Error("Error truncating tables: ", zap.Error(err))
 			return
@@ -119,18 +120,18 @@ func main() {
 	for _, table := range tables {
 		if parquetInfo, exists := parquetTableMap[table]; exists {
 			// Construct the field mapper that defines the strategy of loading this table
-			mapper, err := writer.getFieldMapper(parquetInfo, conf)
+			mapper, err := writer.GetFieldMapper(parquetInfo, conf)
 			if err != nil {
 				log.Error("Error mapping fields for table", zap.String("table", table), zap.Error(err))
 				continue
 			}
 
-			if reason, skip := mapper.shouldSkip(); skip {
+			if reason, skip := mapper.ShouldSkip(); skip {
 				log.Info("Skipping table", zap.String("table", table), zap.String("reason", reason))
 			} else {
 				// Write data to the corresponding database table
 				tableStartTime := time.Now()
-				recordCount, err := writer.writeTable(source, &mapper)
+				recordCount, err := writer.WriteTable(source, &mapper)
 				if err != nil {
 					log.Error("Error writing data for table", zap.String("table", table), zap.Error(err))
 					break

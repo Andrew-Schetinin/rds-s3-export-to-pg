@@ -1,4 +1,4 @@
-package main
+package target
 
 const findIndexes = "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = $1 ORDER BY indexname"
 
