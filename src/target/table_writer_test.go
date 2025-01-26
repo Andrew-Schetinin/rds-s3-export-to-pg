@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-const testConfigFileName = ".test_config.yaml"
+const testConfigFileName = "../.test_config.yaml"
 
 const passwordKey = "password"
 

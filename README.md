@@ -73,14 +73,14 @@ When changing anything in dependencies, the following command has to be executed
 to update the `go.mod` and `go.sum` files:
 
 ```bash
-cd src/
+cd src
 go mod tidy
 ```
 
 Updating all dependencies to new versions:
 
 ```bash
-cd src/
+cd src
 go get -u
 ```
 
@@ -94,7 +94,8 @@ because it is embedded into the executable.
 
 ```bash
 cd src
-rm -f ./dbrestore && go build
+rm -f ./dbrestore # on Linux/MacOS  
+go build
 ```
 
 Removal is useful because any warning or error cause the build to fail creating a new binary, 
@@ -106,5 +107,17 @@ Simple `go test` fails, so it has to be run like the following:
 
 ```bash
 cd src
-go test -v .
+go test -v ./...
+```
+
+Some tests require PostgreSQL to be installed and accessible on localhost with the default `postgres` user
+and the default port 5432. 
+
+The password must be specified via the local file 
+named `.test_config.yaml` (note the dot in front) inside the `src` folder.
+
+This file should contain a single line with the password:
+
+```yaml
+password: POSTGRES_USER_PASSWORD 
 ```
