@@ -1,4 +1,4 @@
-package main
+package dag
 
 import (
 	"testing"
@@ -6,21 +6,21 @@ import (
 
 type TestMap map[string][]string
 
-// newGraph creates and initializes a new graph from the provided TestMap.
-// It adds nodes and their relationships based on the input, calculating in-degree values for all nodes.
-// Returns a pointer to the constructed graph or nil if an error occurs during node creation.
+// newGraph creates and initializes a new Graph from the provided TestMap.
+// It adds Nodes and their relationships based on the input, calculating in-degree values for all Nodes.
+// Returns a pointer to the constructed Graph or nil if an Error occurs during node creation.
 func newGraph(nodes TestMap) *FKeysGraph[string] {
 	ret := NewFKeysGraph[string](10)
 	for key, children := range nodes {
-		node, err := ret.addNode(key)
+		node, err := ret.AddNode(key)
 		if err != nil {
 			return nil
 		}
 		for _, child := range children {
-			node.addChild(child, "")
+			node.AddChild(child, "")
 		}
 	}
-	ret.calculateInDegree()
+	ret.CalculateInDegree()
 	return &ret
 }
 
@@ -31,25 +31,25 @@ func TestCount(t *testing.T) {
 			"B": {"C"},
 			"C": {},
 		})
-		if result := graph.getNodeCount(); result != 3 {
-			t.Errorf("getNodeCount(%v) = %v; want %v", graph, result, 3)
+		if result := graph.GetNodeCount(); result != 3 {
+			t.Errorf("GetNodeCount(%v) = %v; want %v", graph, result, 3)
 		}
-		if result := graph.getGraphSize(); result != 3 {
-			t.Errorf("getGraphSize(%v) = %v; want %v", graph, result, 3)
+		if result := graph.GetGraphSize(); result != 3 {
+			t.Errorf("GetGraphSize(%v) = %v; want %v", graph, result, 3)
 		}
 	})
 }
 
 func TestAddNodeError(t *testing.T) {
-	t.Run("Test AddNode error", func(t *testing.T) {
+	t.Run("Test AddNode Error", func(t *testing.T) {
 		graph := *newGraph(TestMap{
 			"A": {"B"},
 			"B": {"C"},
 			"C": {},
 		})
-		_, err := graph.addNode("A")
+		_, err := graph.AddNode("A")
 		if err == nil {
-			t.Errorf("addNode() was supposed to return an error")
+			t.Errorf("AddNode() was supposed to return an Error")
 		}
 	})
 }
@@ -79,9 +79,9 @@ func TestIsAcyclic(t *testing.T) {
 			expectedResult: false,
 		},
 		{
-			name:           "Empty graph",
+			name:           "Empty Graph",
 			graph:          NewFKeysGraph[string](1),
-			expectedResult: true, // An empty graph is acyclic
+			expectedResult: true, // An empty Graph is acyclic
 		},
 		{
 			name: "Single node with no edges",
@@ -91,7 +91,7 @@ func TestIsAcyclic(t *testing.T) {
 			expectedResult: true,
 		},
 		{
-			name: "Disconnected graph with multiple roots",
+			name: "Disconnected Graph with multiple roots",
 			graph: *newGraph(TestMap{
 				"A": {"B"},
 				"B": {},
@@ -113,9 +113,9 @@ func TestIsAcyclic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.graph.isAcyclic()
+			result := tt.graph.IsAcyclic()
 			if result != tt.expectedResult {
-				t.Errorf("isAcyclic(%v) = %v; want %v", tt.graph, result, tt.expectedResult)
+				t.Errorf("IsAcyclic(%v) = %v; want %v", tt.graph, result, tt.expectedResult)
 			}
 		})
 	}
@@ -137,9 +137,9 @@ func TestTopologicalSort(t *testing.T) {
 			expectedResult: []string{"C", "B", "A"},
 		},
 		{
-			name:           "Empty graph",
+			name:           "Empty Graph",
 			graph:          NewFKeysGraph[string](1),
-			expectedResult: []string{}, // An empty graph is acyclic
+			expectedResult: []string{}, // An empty Graph is acyclic
 		},
 		{
 			name: "Single node with no edges",
@@ -149,7 +149,7 @@ func TestTopologicalSort(t *testing.T) {
 			expectedResult: []string{"A"},
 		},
 		{
-			name: "Disconnected graph with multiple roots",
+			name: "Disconnected Graph with multiple roots",
 			graph: *newGraph(TestMap{
 				"A": {"B"},
 				"B": {},
@@ -160,7 +160,7 @@ func TestTopologicalSort(t *testing.T) {
 			expectedResult: []string{"B", "A", "D", "C", "E"}, // No cycles present
 		},
 		{
-			name: "Disconnected graph with multiple roots and shared children",
+			name: "Disconnected Graph with multiple roots and shared Children",
 			graph: *newGraph(TestMap{
 				"E": {"G", "D", "B"},
 				"A": {"B"},
@@ -184,9 +184,9 @@ func TestTopologicalSort(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.graph.topologicalSort()
+			result := tt.graph.TopologicalSort()
 			if !equalArrays(result, tt.expectedResult) {
-				t.Errorf("topologicalSort(%v) = %v; want %v", tt.graph, result, tt.expectedResult)
+				t.Errorf("TopologicalSort(%v) = %v; want %v", tt.graph, result, tt.expectedResult)
 			}
 		})
 	}

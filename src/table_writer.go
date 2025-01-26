@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"dbrestore/config"
+	"dbrestore/dag"
 	"dbrestore/utils"
 	"fmt"
 	"io"
@@ -331,12 +332,12 @@ func (w *DatabaseWriter) getTablesOrdered() (ret []string, err error) {
 		return
 	}
 
-	if !fkMap.isAcyclic() {
+	if !fkMap.IsAcyclic() {
 		return nil, fmt.Errorf("graph is not acyclic - cannot continue processing")
 	}
 
 	// sort in order of FK dependencies
-	ret = fkMap.topologicalSort()
+	ret = fkMap.TopologicalSort()
 	log.Debug("Tables sorted", zap.Int("table count", len(ret)))
 
 	// Get a full list of tables, because we want to process all of them
@@ -366,10 +367,10 @@ func (w *DatabaseWriter) getTablesOrdered() (ret []string, err error) {
 
 	// report to the log the order of the tables
 	for _, tableName := range ret {
-		node := fkMap.getNode(tableName)
+		children := fkMap.GetNodeChildren(tableName)
 		s := ""
-		if node != nil {
-			for key := range node.children {
+		if children != nil {
+			for key := range *children {
 				s += key + " "
 			}
 		}
@@ -383,18 +384,18 @@ func (w *DatabaseWriter) getTablesOrdered() (ret []string, err error) {
 	}
 
 	errorCount := 0
-	for _, index := range fkMap.graph {
-		node := fkMap.nodes[index]
+	for _, index := range fkMap.Graph {
+		node := fkMap.Nodes[index]
 		// Check if the table exists in tableIndexMap
-		if parentIndex, exists := tableIndexMap[node.name]; exists {
-			for dependentTableName := range node.children {
+		if parentIndex, exists := tableIndexMap[node.Name]; exists {
+			for dependentTableName := range node.Children {
 				// Check if the dependent table exists in tableIndexMap
 				if dependentIndex, exists := tableIndexMap[dependentTableName]; exists {
 					// self-references are permitted
-					if parentIndex <= dependentIndex && node.name != dependentTableName {
+					if parentIndex <= dependentIndex && node.Name != dependentTableName {
 						errorCount += 1
 						log.Error("Parent table index is not larger than dependent table index",
-							zap.String("parent_table", node.name),
+							zap.String("parent_table", node.Name),
 							zap.String("dependent_table", dependentTableName),
 							zap.Int("parent_index", parentIndex),
 							zap.Int("dependent_index", dependentIndex),
@@ -408,7 +409,7 @@ func (w *DatabaseWriter) getTablesOrdered() (ret []string, err error) {
 			}
 		} else {
 			log.Warn("Parent table not found in tableIndexMap",
-				zap.String("parent_table", node.name),
+				zap.String("parent_table", node.Name),
 			)
 		}
 	}
@@ -447,7 +448,7 @@ func (w *DatabaseWriter) getTables() (tables []string, err error) {
 	return tables, nil
 }
 
-func (w *DatabaseWriter) getFKeys() (*FKeysGraph[Relation], error) {
+func (w *DatabaseWriter) getFKeys() (*dag.FKeysGraph[Relation], error) {
 	// Query for foreign key constraints in all tables
 	startTime := time.Now() // Start measuring time
 	if w.db == nil {
@@ -463,7 +464,7 @@ func (w *DatabaseWriter) getFKeys() (*FKeysGraph[Relation], error) {
 		rows.Close()
 	}()
 
-	fkMap := NewFKeysGraph[Relation](1000)
+	fkMap := dag.NewFKeysGraph[Relation](1000)
 	count := 0
 	for rows.Next() {
 		count += 1
@@ -491,26 +492,26 @@ func (w *DatabaseWriter) getFKeys() (*FKeysGraph[Relation], error) {
 		}
 
 		parentName := fmt.Sprintf("%s.%s", r.selfSchema, r.selfTable)
-		node := fkMap.getNode(parentName)
+		node := fkMap.GetNode(parentName)
 		if node == nil {
-			node, err = fkMap.addNode(parentName)
+			node, err = fkMap.AddNode(parentName)
 			if err != nil {
 				return nil, fmt.Errorf("adding node failed: %w", err)
 			}
 		}
 
 		childName := fmt.Sprintf("%s.%s", r.foreignSchema, r.foreignTable)
-		node.addChild(childName, r)
+		node.AddChild(childName, r)
 	}
 	log.Debug("listFKeys query", zap.Int("row count", count),
-		zap.Int("nodes count", fkMap.getNodeCount()), zap.Int("map size", fkMap.getGraphSize()))
+		zap.Int("nodes count", fkMap.GetNodeCount()), zap.Int("map size", fkMap.GetGraphSize()))
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterating foreign key rows failed: %w", err)
 	}
 
 	// initialize in-degree values
-	fkMap.calculateInDegree()
+	fkMap.CalculateInDegree()
 
 	return &fkMap, nil
 }
