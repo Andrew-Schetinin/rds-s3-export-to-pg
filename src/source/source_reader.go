@@ -1,4 +1,4 @@
-package main
+package source
 
 import (
 	config2 "dbrestore/config"
@@ -46,8 +46,8 @@ func NewParquetFileInfo(tableName, fileName string, columns []ColumnInfo) Parque
 
 type ParquetFileInfoList []ParquetFileInfo
 
-// SourceReader reads and parses Parquet files from the given Source
-type SourceReader struct {
+// Reader reads and parses Parquet files from the given Source
+type Reader struct {
 	// source local or remote AWS RDS exported snapshot with JSON and Parquet files
 	source Source
 
@@ -56,12 +56,12 @@ type SourceReader struct {
 }
 
 // NewSourceReader initializes a SourceReader with the given Source instance.
-func NewSourceReader(config *config2.Config, source Source) SourceReader {
-	return SourceReader{config: config, source: source}
+func NewSourceReader(config *config2.Config, source Source) Reader {
+	return Reader{config: config, source: source}
 }
 
-// iterateOverTables validates export metadata and ensures all conditions on snapshot name, status, and progress are met.
-func (r *SourceReader) iterateOverTables(databaseTables []string) (ret ParquetFileInfoList, err error) {
+// IterateOverTables validates export metadata and ensures all conditions on snapshot name, status, and progress are met.
+func (r *Reader) IterateOverTables(databaseTables []string) (ret ParquetFileInfoList, err error) {
 	err = r.validateExportInfo()
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (r *SourceReader) iterateOverTables(databaseTables []string) (ret ParquetFi
 
 	files, err := r.listTableListFiles()
 	if err != nil {
-		return nil, fmt.Errorf("iterateOverTables(): %w", err)
+		return nil, fmt.Errorf("IterateOverTables(): %w", err)
 	}
 
 	// we need it for validating that all tables are present
@@ -82,7 +82,7 @@ func (r *SourceReader) iterateOverTables(databaseTables []string) (ret ParquetFi
 	for _, file := range files {
 		moreTables, err := r.processFile(file, &tableMap)
 		if err != nil {
-			return nil, fmt.Errorf("iterateOverTables(): error reading the file %s: %w",
+			return nil, fmt.Errorf("IterateOverTables(): error reading the file %s: %w",
 				file, err)
 		}
 		ret = append(ret, moreTables...)
@@ -93,9 +93,9 @@ func (r *SourceReader) iterateOverTables(databaseTables []string) (ret ParquetFi
 	for tableName, isPresent := range tableMap {
 		if !isPresent {
 			if r.tableIgnored(tableName) {
-				log.Debug("iterateOverTables(): the table is ignored", zap.String("table name", tableName))
+				log.Debug("IterateOverTables(): the table is ignored", zap.String("table name", tableName))
 			} else {
-				log.Error("iterateOverTables(): missing table in source files",
+				log.Error("IterateOverTables(): missing table in source files",
 					zap.String("table name", tableName))
 				errorCount++
 			}
@@ -103,20 +103,20 @@ func (r *SourceReader) iterateOverTables(databaseTables []string) (ret ParquetFi
 	}
 
 	if errorCount > 0 {
-		err = fmt.Errorf("iterateOverTables(): %d errors found", errorCount)
+		err = fmt.Errorf("IterateOverTables(): %d errors found", errorCount)
 	}
 	return
 }
 
-func (r *SourceReader) processFile(relativePath string, tableMap *map[string]bool) (ret ParquetFileInfoList, err error) {
-	fileInfo := r.source.getFile(relativePath)
+func (r *Reader) processFile(relativePath string, tableMap *map[string]bool) (ret ParquetFileInfoList, err error) {
+	fileInfo := r.source.GetFile(relativePath)
 	defer r.source.Dispose(fileInfo)
-	log.Debug("processFile()", zap.String("fileInfo.localPath", fileInfo.localPath))
+	log.Debug("processFile()", zap.String("fileInfo.LocalPath", fileInfo.LocalPath))
 
 	// Open the JSON file for reading
-	file, err := os.Open(fileInfo.localPath)
+	file, err := os.Open(fileInfo.LocalPath)
 	if err != nil {
-		return nil, fmt.Errorf("processFile(): failed to open file '%s': %w", fileInfo.localPath, err)
+		return nil, fmt.Errorf("processFile(): failed to open file '%s': %w", fileInfo.LocalPath, err)
 	}
 	defer func(file *os.File) {
 		err := file.Close()
@@ -196,7 +196,7 @@ func (r *SourceReader) processFile(relativePath string, tableMap *map[string]boo
 				return nil, fmt.Errorf("processFile(): error parsing the file '%s': %w", file.Name(), err)
 			}
 
-			ret = append(ret, NewParquetFileInfo(targetStr, fileInfo.localPath, columns))
+			ret = append(ret, NewParquetFileInfo(targetStr, fileInfo.LocalPath, columns))
 
 			exists, ignore := r.tableFound(targetStr, tableMap)
 			if exists {
@@ -226,7 +226,7 @@ func (r *SourceReader) processFile(relativePath string, tableMap *map[string]boo
 	return ret, nil
 }
 
-func (r *SourceReader) readColumns(originalTypeMappingsMap []interface{}) (ret []ColumnInfo, err error) {
+func (r *Reader) readColumns(originalTypeMappingsMap []interface{}) (ret []ColumnInfo, err error) {
 	columns := make([]ColumnInfo, 0)
 
 	for index, item := range originalTypeMappingsMap {
@@ -268,7 +268,7 @@ func (r *SourceReader) readColumns(originalTypeMappingsMap []interface{}) (ret [
 	return columns, nil
 }
 
-func (r *SourceReader) readField(columnMap map[string]interface{}, index int, fieldName string) (val string, err error) {
+func (r *Reader) readField(columnMap map[string]interface{}, index int, fieldName string) (val string, err error) {
 	if val, exists := columnMap[fieldName].(string); exists {
 		return val, nil
 	}
@@ -277,7 +277,7 @@ func (r *SourceReader) readField(columnMap map[string]interface{}, index int, fi
 }
 
 // tableFound checks if a table exists in the provided table map and determines whether missing tables should be ignored.
-func (r *SourceReader) tableFound(tableName string, tableMap *map[string]bool) (exists bool, ignore bool) {
+func (r *Reader) tableFound(tableName string, tableMap *map[string]bool) (exists bool, ignore bool) {
 	_, exists = (*tableMap)[tableName]
 	if !exists {
 		ignore = r.tableIgnored(tableName)
@@ -286,7 +286,7 @@ func (r *SourceReader) tableFound(tableName string, tableMap *map[string]bool) (
 }
 
 // tableIgnored checks if this missing table should be ignored
-func (r *SourceReader) tableIgnored(tableName string) bool {
+func (r *Reader) tableIgnored(tableName string) bool {
 	// check if this missing table should be ignored
 	for prefix := range r.config.IgnoreMissingTablePrefixes {
 		if strings.Contains(prefix, ".") {
@@ -300,7 +300,7 @@ func (r *SourceReader) tableIgnored(tableName string) bool {
 	return false
 }
 
-func (r *SourceReader) listDatabases() error {
+func (r *Reader) ListDatabases() error {
 	err := r.validateExportInfo()
 	if err != nil {
 		return err
@@ -316,7 +316,7 @@ func (r *SourceReader) listDatabases() error {
 	return nil
 }
 
-func (r *SourceReader) listTableListFiles() (files []string, err error) {
+func (r *Reader) listTableListFiles() (files []string, err error) {
 	// for example "export_tables_info_export-test-01_from_1_to_96.json"
 	tablesMask := fmt.Sprintf("export_tables_info_%s_from_*.json", r.source.getSnapshotName())
 	files, err = r.source.listFiles("", tablesMask, false)
@@ -328,27 +328,27 @@ func (r *SourceReader) listTableListFiles() (files []string, err error) {
 	return
 }
 
-func (r *SourceReader) validateExportInfo() (err error) {
+func (r *Reader) validateExportInfo() (err error) {
 	info := fmt.Sprintf("export_info_%s.json", r.source.getSnapshotName())
-	exportInfoFile := r.source.getFile(info)
-	log.Debug("iterateOverTables()", zap.String("exportInfoFile.localPath", exportInfoFile.localPath))
+	exportInfoFile := r.source.GetFile(info)
+	log.Debug("IterateOverTables()", zap.String("exportInfoFile.LocalPath", exportInfoFile.LocalPath))
 	defer r.source.Dispose(exportInfoFile)
 
 	// Read the complete file to a string in memory
-	content, err := os.ReadFile(exportInfoFile.localPath)
+	content, err := os.ReadFile(exportInfoFile.LocalPath)
 	if err != nil {
-		return fmt.Errorf("failed to read the file '%s': %w", exportInfoFile.localPath, err)
+		return fmt.Errorf("failed to read the file '%s': %w", exportInfoFile.LocalPath, err)
 	}
 	// Load JSON as a map
 	var data map[string]interface{}
 	if err := json.Unmarshal(content, &data); err != nil {
-		return fmt.Errorf("failed to parse JSON from the file '%s': %w", exportInfoFile.localPath, err)
+		return fmt.Errorf("failed to parse JSON from the file '%s': %w", exportInfoFile.LocalPath, err)
 	}
 
 	//fmt.Printf("Parsed JSON: %v\n", data)
 
 	snapshotName := r.source.getSnapshotName()
-	log.Debug("iterateOverTables()", zap.String("snapshotName", snapshotName))
+	log.Debug("IterateOverTables()", zap.String("snapshotName", snapshotName))
 
 	exportTaskIdentifier, ok := data["exportTaskIdentifier"]
 	if !ok {
@@ -384,7 +384,7 @@ func (r *SourceReader) validateExportInfo() (err error) {
 	return
 }
 
-func (r *SourceReader) readIntField(columnMap map[string]interface{}, index int, fieldName string) (int, error) {
+func (r *Reader) readIntField(columnMap map[string]interface{}, index int, fieldName string) (int, error) {
 	val, exists := columnMap[fieldName]
 	if !exists {
 		return 0, fmt.Errorf(

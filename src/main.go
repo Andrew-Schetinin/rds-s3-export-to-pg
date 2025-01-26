@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	config2 "dbrestore/config"
+	source2 "dbrestore/source"
 	"dbrestore/utils"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -25,10 +26,10 @@ func main() {
 	conf := config2.GetConfig()
 	log.Info("Starting the application")
 
-	var source Source
+	var source source2.Source
 	if conf.LocalDir != "" {
 		log.Info("Using local directory: ", zap.String("dir", conf.LocalDir))
-		source = NewLocalSource(conf.LocalDir)
+		source = source2.NewLocalSource(conf.LocalDir)
 	} else {
 		log.Info("Using AWS S3 bucket: ", zap.String("bucket", conf.AWSBucketPath))
 		// Create a credential provider with static credentials.
@@ -57,10 +58,10 @@ func main() {
 		return
 	}
 
-	reader := NewSourceReader(conf, source)
+	reader := source2.NewSourceReader(conf, source)
 
 	if conf.ListCommand {
-		err := reader.listDatabases()
+		err := reader.ListDatabases()
 		if err != nil {
 			log.Error("ERROR: ", zap.Error(err))
 		}
@@ -100,7 +101,7 @@ func main() {
 	}
 
 	// Get the list of tables in Parquet files - we only have data for those tables
-	parquetTables, err := reader.iterateOverTables(tables)
+	parquetTables, err := reader.IterateOverTables(tables)
 	if err != nil {
 		log.Error("ERROR: ", zap.Error(err))
 		return
@@ -109,7 +110,7 @@ func main() {
 		zap.Duration("time", time.Since(startTime)))
 
 	// Convert parquetTables list to a map where the table name is the key
-	parquetTableMap := make(map[string]ParquetFileInfo)
+	parquetTableMap := make(map[string]source2.ParquetFileInfo)
 	for _, table := range parquetTables {
 		parquetTableMap[table.TableName] = table
 	}

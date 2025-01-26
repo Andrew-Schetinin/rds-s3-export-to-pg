@@ -2,6 +2,7 @@ package main
 
 import (
 	"dbrestore/config"
+	"dbrestore/source"
 	"github.com/parquet-go/parquet-go"
 	"go.uber.org/zap"
 )
@@ -11,7 +12,7 @@ const ReasonSkippedByConfig1 = "Table is not listed in --include-tables configur
 const ReasonSkippedByConfig2 = "Table is listed in --exclude-tables configuration"
 
 type FieldMapper struct {
-	Info ParquetFileInfo
+	Info source.ParquetFileInfo
 
 	Writer *DatabaseWriter
 
@@ -42,7 +43,7 @@ func (m *FieldMapper) getFieldNames() []string {
 	return names
 }
 
-func (m *FieldMapper) getRows(file FileInfo) *ParquetReader {
+func (m *FieldMapper) getRows(file source.FileInfo) *ParquetReader {
 	reader := ParquetReader{
 		fileInfo: file,
 		mapper:   m,

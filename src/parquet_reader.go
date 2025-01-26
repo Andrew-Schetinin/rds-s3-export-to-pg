@@ -1,6 +1,7 @@
 package main
 
 import (
+	"dbrestore/source"
 	"fmt"
 	"github.com/parquet-go/parquet-go"
 	"go.uber.org/zap"
@@ -11,7 +12,7 @@ import (
 // ParquetReader is a structure for reading and processing Parquet files while mapping data to a defined schema.
 type ParquetReader struct {
 	// fileInfo contains metadata and details of the file to be processed, such as its path, size, etc.
-	fileInfo FileInfo
+	fileInfo source.FileInfo
 
 	// mapper is a reference to the FieldMapper used to map Parquet fields to a defined schema of the target table.
 	mapper *FieldMapper
@@ -96,14 +97,14 @@ func (r *ParquetReader) Err() error {
 }
 
 // Open initializes the ParquetReader with the specified FileInfo and opens the associated Parquet file for reading.
-func (r *ParquetReader) Open(fileInfo FileInfo) error {
+func (r *ParquetReader) Open(fileInfo source.FileInfo) error {
 	if r.isOpen || r.wasClosed {
 		return fmt.Errorf("the input file ParquetReader had been already open")
 	}
 	r.fileInfo = fileInfo
 
 	// Open the Parquet file
-	fileName := fileInfo.localPath
+	fileName := fileInfo.LocalPath
 	osFile, err := os.Open(fileName)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", fileName, err)

@@ -1,4 +1,4 @@
-package main
+package source
 
 import (
 	"fmt"
@@ -13,18 +13,18 @@ type LocalSource struct {
 	// snapshotName the name of the snapshot associated with the source.
 	// This snapshot name (or export name) is critical because the folder and file names use it actively.
 	snapshotName string
-	// localDir an absolute localPath to a local folder ending with the same name as the snapshotName
+	// localDir an absolute LocalPath to a local folder ending with the same name as the snapshotName
 	localDir string
 }
 
 // NewLocalSource is a constructor for creating a new LocalSource.
 //
-// - localDir: is the localPath to a local directory on the filesystem that will be used
+// - localDir: is the LocalPath to a local directory on the filesystem that will be used
 // by the LocalSource instance. It must point to an existing directory and will
-// be normalized to the current OS localPath format. If the localPath does not exist or
+// be normalized to the current OS LocalPath format. If the LocalPath does not exist or
 // is not a directory, the function will terminate the program with a fatal log.
 func NewLocalSource(localDir string) *LocalSource {
-	// Normalize the localDir localPath to the current OS format
+	// Normalize the localDir LocalPath to the current OS format
 	localDir = filepath.Clean(localDir)
 	if info, err := os.Stat(localDir); err != nil {
 		log.Fatal("Failed to access localDir: %v", zap.Error(err))
@@ -34,12 +34,12 @@ func NewLocalSource(localDir string) *LocalSource {
 
 	// Extract the last subfolder name from localDir
 	lastSubfolder := filepath.Base(localDir)
-	//log.Printf("The last subfolder in the localPath is: %s", lastSubfolder)
+	//log.Printf("The last subfolder in the LocalPath is: %s", lastSubfolder)
 	return &LocalSource{localDir: localDir, snapshotName: lastSubfolder}
 }
 
-func (l *LocalSource) getFile(path string) FileInfo {
-	// Concatenate localDir with the given localPath using correct file localPath delimiters
+func (l *LocalSource) GetFile(path string) FileInfo {
+	// Concatenate localDir with the given LocalPath using correct file LocalPath delimiters
 	fullPath := filepath.Join(l.localDir, path)
 	// Check if the file exists
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
@@ -54,12 +54,12 @@ func (l *LocalSource) getFile(path string) FileInfo {
 	}
 
 	fileSize := info.Size()
-	return FileInfo{relativePath: path, localPath: fullPath, size: fileSize, temp: false}
+	return FileInfo{RelativePath: path, LocalPath: fullPath, Size: fileSize, Temp: false}
 }
 
 func (l *LocalSource) Dispose(file FileInfo) {
-	if file.temp {
-		err := os.Remove(file.localPath) // Delete the file
+	if file.Temp {
+		err := os.Remove(file.LocalPath) // Delete the file
 		if err != nil {
 			log.Error("Failed to delete file: %v", zap.Error(err))
 		}
@@ -73,14 +73,14 @@ func (l *LocalSource) getSnapshotName() string {
 func (l *LocalSource) listFiles(relativePath string, fileMask string, foldersOnly bool) ([]string, error) {
 	var files []string
 
-	dir := l.getFile(relativePath)
-	if dir.localPath == "" {
-		return []string{}, fmt.Errorf("localPath not found: %s", relativePath)
+	dir := l.GetFile(relativePath)
+	if dir.LocalPath == "" {
+		return []string{}, fmt.Errorf("LocalPath not found: %s", relativePath)
 	}
 
-	entries, err := os.ReadDir(dir.localPath)
+	entries, err := os.ReadDir(dir.LocalPath)
 	if err != nil {
-		return []string{}, fmt.Errorf("error accessing directory %s: %w", dir.localPath, err)
+		return []string{}, fmt.Errorf("error accessing directory %s: %w", dir.LocalPath, err)
 	}
 
 	prefix, suffix := splitMask(fileMask)
@@ -88,7 +88,7 @@ func (l *LocalSource) listFiles(relativePath string, fileMask string, foldersOnl
 	for _, entry := range entries {
 		if strings.HasPrefix(entry.Name(), prefix) && strings.HasSuffix(entry.Name(), suffix) {
 			if !foldersOnly || entry.IsDir() {
-				entryPath := filepath.Join(dir.relativePath, entry.Name())
+				entryPath := filepath.Join(dir.RelativePath, entry.Name())
 				files = append(files, entryPath)
 			}
 		}
@@ -111,27 +111,27 @@ func splitMask(fileMask string) (prefix string, suffix string) {
 	return
 }
 
-func (l *LocalSource) listFilesRecursively(relativePath string) (ret []string, err error) {
-	dir := l.getFile(relativePath)
-	if dir.localPath == "" {
-		return []string{}, fmt.Errorf("localPath not found: %s", relativePath)
+func (l *LocalSource) ListFilesRecursively(relativePath string) (ret []string, err error) {
+	dir := l.GetFile(relativePath)
+	if dir.LocalPath == "" {
+		return []string{}, fmt.Errorf("LocalPath not found: %s", relativePath)
 	}
 
-	entries, err := os.ReadDir(dir.localPath)
+	entries, err := os.ReadDir(dir.LocalPath)
 	if err != nil {
-		return []string{}, fmt.Errorf("error accessing directory %s: %w", dir.localPath, err)
+		return []string{}, fmt.Errorf("error accessing directory %s: %w", dir.LocalPath, err)
 	}
 
 	for _, entry := range entries {
 		if entry.IsDir() {
-			entryPath := filepath.Join(dir.relativePath, entry.Name())
-			subFiles, err := l.listFilesRecursively(entryPath)
+			entryPath := filepath.Join(dir.RelativePath, entry.Name())
+			subFiles, err := l.ListFilesRecursively(entryPath)
 			if err != nil {
 				return []string{}, err
 			}
 			ret = append(ret, subFiles...)
 		} else {
-			ret = append(ret, filepath.Join(dir.relativePath, entry.Name()))
+			ret = append(ret, filepath.Join(dir.RelativePath, entry.Name()))
 		}
 	}
 

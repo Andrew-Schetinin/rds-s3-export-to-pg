@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"dbrestore/config"
+	"dbrestore/source"
 	"dbrestore/utils"
 	"fmt"
 	"github.com/jackc/pgx/v5"
@@ -128,10 +129,10 @@ func runTestInAnotherDatabase(t *testing.T, testDatabaseName string, pwd string)
 	t.Logf("Table 'test_table' created successfully in database '%s'", testDatabaseName)
 
 	mapper := FieldMapper{
-		Info: ParquetFileInfo{
+		Info: source.ParquetFileInfo{
 			TableName: "test_table",
 			FileName:  "test_table.parquet",
-			Columns: []ColumnInfo{
+			Columns: []source.ColumnInfo{
 				{
 					ColumnName:   "id",
 					OriginalType: "bigint",

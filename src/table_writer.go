@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"dbrestore/config"
 	"dbrestore/dag"
+	"dbrestore/source"
 	"dbrestore/utils"
 	"fmt"
 	"io"
@@ -171,7 +172,7 @@ func (w *DatabaseWriter) getConstraintList(tableName string) (ret []ConstraintIn
 	return constraints, nil
 }
 
-func (w *DatabaseWriter) writeTable(source Source, mapper *FieldMapper) (ret int, err error) {
+func (w *DatabaseWriter) writeTable(source source.Source, mapper *FieldMapper) (ret int, err error) {
 	start := time.Now()
 	tableName := mapper.Info.TableName
 	indexInfos, err := w.getIndexList(tableName)
@@ -516,7 +517,7 @@ func (w *DatabaseWriter) getFKeys() (*dag.FKeysGraph[Relation], error) {
 	return &fkMap, nil
 }
 
-func (w *DatabaseWriter) getFieldMapper(info ParquetFileInfo, config *config.Config) (ret FieldMapper, err error) {
+func (w *DatabaseWriter) getFieldMapper(info source.ParquetFileInfo, config *config.Config) (ret FieldMapper, err error) {
 	mapper := FieldMapper{
 		Info:   info,
 		Writer: w,
@@ -536,10 +537,10 @@ func (w *DatabaseWriter) getTableSize(tableName string) int {
 	return size
 }
 
-func (w *DatabaseWriter) writeTableData(source Source, mapper *FieldMapper) (ret int, err error) {
+func (w *DatabaseWriter) writeTableData(source source.Source, mapper *FieldMapper) (ret int, err error) {
 	// TODO: replace the database name with a name read from the configuration
 	relativePath := fmt.Sprintf("%s/%s", "tms_test", mapper.Info.TableName)
-	allFiles, err := source.listFilesRecursively(relativePath)
+	allFiles, err := source.ListFilesRecursively(relativePath)
 	slices.Sort(allFiles)
 
 	// Group files by their subfolders
@@ -589,8 +590,8 @@ func (w *DatabaseWriter) writeTableData(source Source, mapper *FieldMapper) (ret
 	return ret, nil
 }
 
-func (w *DatabaseWriter) writeTablePart(source Source, mapper *FieldMapper, relativePath string) (ret int, err error) {
-	file := source.getFile(relativePath)
+func (w *DatabaseWriter) writeTablePart(source source.Source, mapper *FieldMapper, relativePath string) (ret int, err error) {
+	file := source.GetFile(relativePath)
 	copyFromSource := mapper.getRows(file)
 	if copyFromSource.IsEmpty() {
 		log.Debug("Skipping empty Parquet file", zap.String("file", relativePath))
