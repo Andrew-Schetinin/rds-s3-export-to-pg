@@ -39,20 +39,31 @@ Planned action items:
 
 ## 1.2. Supported platforms
 
+These are the planned platforms.
+Binaries are not yet built for those platforms.
+
 1. MacOS arm64
 2. Ubuntu Linux 22.04 amd64
 3. MS Windows amd64
 
-## 1.3. Command line arguments
+## 1.3. Usage and command line arguments
 
-TBD
+Run the program with the `--help` argument to receive the list of supported command line arguments.
+
+The program expects to find the RDS export either locally or remotely on S3.
+
+The target database, into which data is loaded, has to exist and contain complete (and compatible) schema.
 
 ## 1.4. Frequently asked questions
 
-1. Why Go?
+1. Why developing this tool?
+   * Restoring from AWS RDS exports is a frequent question on StackOverflow and in forums, 
+   and there is no suitable tool.  
+2. Why Go?
    * Go is great for microservices and lambdas because of its resource efficiency and performance. 
    It is also highly suitable for light-weight command line tools that need to run inside Docker like this one.
-2. TBD
+3. Is this a commercial project?
+   * No, it is not, and it is not planned as such - hence the open source license.
 
 # 2. Development
 
@@ -96,22 +107,4 @@ Simple `go test` fails, so it has to be run like the following:
 ```bash
 cd src
 go test -v .
-```
-
-## 2.4. Podman and Docker build
-
-Podman is recommended because it is root-less, though Docker is supported as well.
-
-The tag is currently specified manually and must be incremented before publishing Docker images to any online repos.
-
-Build using this command for Podman Buildah:
-
-```bash
-buildah build -f Dockerfile -t docker-dbrestore:0.2-dev .
-```
-
-or with Docker:
-
-```bash
-docker build --tag docker-dbrestore:0.2-dev .
 ```
