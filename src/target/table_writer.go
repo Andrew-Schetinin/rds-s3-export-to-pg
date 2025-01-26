@@ -20,27 +20,43 @@ import (
 	"go.uber.org/zap"
 )
 
+// IndexInfo represents metadata about a table index.
 type IndexInfo struct {
+	// Name is the name of the index.
 	Name string
-	Def  string
-	//Command string
+	// Def is the definition or creation statement of the index.
+	Def string
 }
 
+// ConstraintInfo represents information about a database constraint, including its name and the command to define it.
 type ConstraintInfo struct {
-	Name    string
+	// Name represents the identifier of the table constraint.
+	Name string
+	// Command represents the SQL definition or statement used to define the table constraint.
 	Command string
 }
 
 // DatabaseWriter represents a utility for writing data to a database through a specified connection string.
 type DatabaseWriter struct {
-	//connStr := "postgres://andrews:asd@localhost:5432/test?sslmode=disable"
+
+	// ConnectionString connection string in the format
+	// connStr := "postgres://andrews:asd@localhost:5432/test?sslmode=disable"
 	ConnectionString string
-	db               *pgx.Conn //*sql.DB
-	regExPrimary     *regexp.Regexp
-	regExIdx         *regexp.Regexp
-	regExCon         *regexp.Regexp
+
+	// db the database connection (opened by this class)
+	db *pgx.Conn
+
+	// regExPrimary holds the compiled regular expression used for primary keys pattern matching.
+	regExPrimary *regexp.Regexp
+
+	// regExIdx represents a compiled regular expression used for pattern matching of indexes.
+	regExIdx *regexp.Regexp
+
+	// regExCon is a compiled regular expression used for pattern matching operations of constraints.
+	regExCon *regexp.Regexp
 }
 
+// NewDatabaseWriter creates and initializes a new DatabaseWriter instance with the provided connection details and regex patterns.
 func NewDatabaseWriter(host string, port int, name string, user string, password string, mode bool) DatabaseWriter {
 	// Compile the regular expression
 	rePrimary, err := regexp.Compile(".*PRIMARY KEY.*")

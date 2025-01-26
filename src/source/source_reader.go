@@ -15,6 +15,7 @@ import (
 
 // ColumnInfo represents metadata about a database column, including its name, type, and precision constraints.
 type ColumnInfo struct {
+
 	// ColumnName defines the name of the database column in the source table.
 	ColumnName string `json:"columnName"`
 
@@ -34,16 +35,24 @@ type ColumnInfo struct {
 	OriginalDateTimePrecision int `json:"originalDateTimePrecision"`
 }
 
+// ParquetFileInfo holds metadata about a Parquet file, including its associated table, file name, and column definitions.
 type ParquetFileInfo struct {
+
+	// TableName specifies the name of the table associated with the Parquet file, including the schema name.
 	TableName string
-	FileName  string
-	Columns   []ColumnInfo
+
+	// FileName specifies the absolute local file path to the Parquet file associated with the table.
+	FileName string
+
+	// Columns defines a list of column metadata, representing the structure and constraints of the associated table's columns.
+	Columns []ColumnInfo
 }
 
 func NewParquetFileInfo(tableName, fileName string, columns []ColumnInfo) ParquetFileInfo {
 	return ParquetFileInfo{TableName: tableName, FileName: fileName, Columns: columns}
 }
 
+// ParquetFileInfoList represents a collection of ParquetFileInfo items, providing metadata for multiple Parquet files.
 type ParquetFileInfoList []ParquetFileInfo
 
 // Reader reads and parses Parquet files from the given Source

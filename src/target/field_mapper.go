@@ -15,14 +15,20 @@ const ReasonNotEmpty = "Table is not empty"
 const ReasonSkippedByConfig1 = "Table is not listed in --include-tables configuration"
 const ReasonSkippedByConfig2 = "Table is listed in --exclude-tables configuration"
 
+// FieldMapper handles mapping between Parquet file data types and PostgreSQL data types.
 type FieldMapper struct {
+
+	// Info contains metadata about the Parquet file, such as table name, file path, and column definitions.
 	Info source.ParquetFileInfo
 
+	// Writer is responsible for persisting mapped data to the target table.
 	Writer *DatabaseWriter
 
+	// Config is a reference to the application configuration, influencing behavior such as table inclusion and exclusion.
 	Config *config.Config
 }
 
+// ShouldSkip checks whether the current table should be skipped based on inclusion, exclusion, or non-empty constraints.
 func (m *FieldMapper) ShouldSkip() (reason string, skip bool) {
 	found, notEmpty := m.Config.TableNameInSet(m.Config.IncludeTables, m.Info.TableName)
 	if !found && notEmpty {
@@ -39,6 +45,7 @@ func (m *FieldMapper) ShouldSkip() (reason string, skip bool) {
 	return "", false
 }
 
+// getFieldNames returns a slice of column names from the Parquet file metadata stored in the FieldMapper.
 func (m *FieldMapper) getFieldNames() []string {
 	names := make([]string, 0, len(m.Info.Columns))
 	for _, column := range m.Info.Columns {
