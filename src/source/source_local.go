@@ -43,13 +43,13 @@ func (l *LocalSource) GetFile(path string) FileInfo {
 	fullPath := filepath.Join(l.localDir, path)
 	// Check if the file exists
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-		log.Error("File does not exist: %s", zap.String("fullPath", fullPath))
+		log.Error("File does not exist", zap.String("fullPath", fullPath))
 		return FileInfo{} // Return an empty File if file doesn't exist
 	}
 
 	info, err := os.Stat(fullPath)
 	if err != nil {
-		log.Error("Error retrieving file %s info: %v", zap.String("fullPath", fullPath), zap.Error(err))
+		log.Error("Error retrieving file info", zap.String("fullPath", fullPath), zap.Error(err))
 		return FileInfo{}
 	}
 
@@ -61,7 +61,7 @@ func (l *LocalSource) Dispose(file FileInfo) {
 	if file.Temp {
 		err := os.Remove(file.LocalPath) // Delete the file
 		if err != nil {
-			log.Error("Failed to delete file: %v", zap.Error(err))
+			log.Error("Failed to delete file", zap.String("file", file.LocalPath), zap.Error(err))
 		}
 	}
 }

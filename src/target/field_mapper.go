@@ -9,7 +9,7 @@ import (
 )
 
 // log a convenience wrapper to shorten code lines
-var log = utils.Logger
+var log = &utils.Logger
 
 const ReasonNotEmpty = "Table is not empty"
 const ReasonSkippedByConfig1 = "Table is not listed in --include-tables configuration"
@@ -59,7 +59,7 @@ func (m *FieldMapper) Transform(x parquet.Value) (value any, err error) {
 	columnIndex := x.Column()
 	column := m.Info.Columns[columnIndex]
 	stringValue := x.String()
-	log.Debug("transform", zap.Any("value", x), zap.String("string", stringValue),
+	log.Trace("transform", zap.Any("value", x), zap.String("string", stringValue),
 		zap.Any("type", x.Kind()), zap.Int("columnIndex", columnIndex),
 		zap.String("column", column.ColumnName), zap.String("originalType", column.OriginalType))
 	if x.IsNull() {
@@ -84,6 +84,9 @@ func (m *FieldMapper) Transform(x parquet.Value) (value any, err error) {
 	if column.OriginalType == "real" {
 		return x.Float(), nil
 	}
+	if column.OriginalType == "numeric" {
+		return stringValue, nil
+	}
 	if column.OriginalType == "character varying" {
 		return stringValue, nil
 	}
@@ -99,11 +102,17 @@ func (m *FieldMapper) Transform(x parquet.Value) (value any, err error) {
 	if column.OriginalType == "jsonb" {
 		return stringValue, nil
 	}
+	if column.OriginalType == "ARRAY" {
+		return stringValue, nil
+	}
 	if column.OriginalType == "USER-DEFINED" && column.ExpectedExportedType == "binary (UTF8)" {
 		// IMPORTANT: this does not work with the binary format for HSTORE fields,
 		// even though sources in Internet say it should, and therefore we must use CSV format instead
 		return stringValue, nil
 	}
+	log.Warn("transform", zap.Any("value", x), zap.String("string", stringValue),
+		zap.Any("type", x.Kind()), zap.Int("columnIndex", columnIndex),
+		zap.String("column", column.ColumnName), zap.String("originalType", column.OriginalType))
 	panic("unexpected column type: " + column.OriginalType)
 	return stringValue, nil
 }

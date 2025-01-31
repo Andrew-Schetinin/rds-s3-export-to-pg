@@ -554,8 +554,11 @@ func (w *DatabaseWriter) getTableSize(tableName string) int {
 }
 
 func (w *DatabaseWriter) writeTableData(source source.Source, mapper *FieldMapper) (ret int, err error) {
-	// TODO: replace the database name with a name read from the configuration
-	relativePath := fmt.Sprintf("%s/%s", "test", mapper.Info.TableName)
+	if mapper.Config.SourceDatabase == "" {
+		// TODO: replace the database name with a name read from the configuration
+		return -1, fmt.Errorf("source database is not set")
+	}
+	relativePath := fmt.Sprintf("%s/%s", mapper.Config.SourceDatabase, mapper.Info.TableName)
 	allFiles, err := source.ListFilesRecursively(relativePath)
 	slices.Sort(allFiles)
 

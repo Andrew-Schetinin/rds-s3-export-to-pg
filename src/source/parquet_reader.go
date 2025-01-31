@@ -150,17 +150,17 @@ func (r *ParquetReader) Close() (err error) {
 
 // StartReading reads rows from a parquet file using a transformer and starts a goroutine to process rows asynchronously.
 func (r *ParquetReader) StartReading() (int, error) {
-	log.Debug("f.Schema(): ", zap.String("name", r.parquetFile.Schema().Name()))
+	log.Trace("f.Schema(): ", zap.String("name", r.parquetFile.Schema().Name()))
 	for i, column := range r.parquetFile.Schema().Columns() {
 		for j, path := range column {
-			log.Debug("Column", zap.Int("i", i), zap.Int("j", j), zap.String("localPath", path))
+			log.Trace("Column", zap.Int("i", i), zap.Int("j", j), zap.String("localPath", path))
 		}
 	}
 
 	for i, rowGroup := range r.parquetFile.RowGroups() {
-		log.Debug("RowGroup: ", zap.Int("index", i))
+		log.Trace("RowGroup: ", zap.Int("index", i))
 		for j, columnChunk := range rowGroup.ColumnChunks() {
-			log.Debug("ColumnChunk: ", zap.Int("index", j), zap.Int("column", columnChunk.Column()),
+			log.Trace("ColumnChunk: ", zap.Int("index", j), zap.Int("column", columnChunk.Column()),
 				zap.Any("type", columnChunk.Type()))
 		}
 	}
@@ -193,7 +193,7 @@ func (r *ParquetReader) StartReading() (int, error) {
 				}
 
 				singleRow := row[0]
-				log.Debug("singleRow", zap.Any("singleRow", singleRow))
+				log.Trace("singleRow", zap.Any("singleRow", singleRow))
 
 				var rowData = NextRow{
 					row: make([]any, len(singleRow)),
@@ -211,7 +211,7 @@ func (r *ParquetReader) StartReading() (int, error) {
 
 				r.channel <- rowData
 
-				log.Debug("Row", zap.Any("row", row), zap.Int64("rowCounter", r.rowCounter),
+				log.Trace("Row", zap.Any("row", row), zap.Int64("rowCounter", r.rowCounter),
 					zap.Int("rowCount", rowCount))
 				// Process the row as needed
 			}

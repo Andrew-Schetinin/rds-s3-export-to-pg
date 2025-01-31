@@ -168,6 +168,8 @@ func (c *Config) loadFromArguments() {
 		"Enable production JSON-formatted logs")
 	verboseLogs := flag.Bool("verbose", false,
 		"Enable verbose DEBUG-level logging")
+	traceLogs := flag.Bool("trace", false,
+		"Enable even more verbose TRACE-level logging")
 	developmentLogs := flag.Bool("dev-logs", false,
 		"Enable development logs formatting with time stamps and source files")
 
@@ -214,7 +216,7 @@ func (c *Config) loadFromArguments() {
 
 	// the logger initialization should happen first of all
 	utils.InitLogger(jsonLogs != nil && *jsonLogs, developmentLogs != nil && *developmentLogs,
-		verboseLogs != nil && *verboseLogs)
+		verboseLogs != nil && *verboseLogs, traceLogs != nil && *traceLogs)
 
 	flag.Usage = func() {
 		_, err := fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])

@@ -8,7 +8,7 @@ import (
 )
 
 // log a convenience wrapper to shorten code lines
-var log = utils.Logger
+var log = &utils.Logger
 
 // ChildrenMap the map of child Nodes in DAG, identified by names
 type ChildrenMap[T any] map[string][]T

@@ -7,8 +7,27 @@ import (
 	"os"
 )
 
+// CustomLogger is a logger type that embeds zap.Logger to provide logging functionalities with additional features.
+type CustomLogger struct {
+	zap.Logger // Embedding Logger (composition)
+}
+
+// defaultLogger is a pre-configured development logger using the zap library for structured logging.
+var defaultLogger, _ = zap.NewDevelopment()
+
 // Logger shared logger for the whole program
-var Logger, _ = zap.NewDevelopment() // the default logger
+var Logger = CustomLogger{*defaultLogger}
+
+const (
+	// LogTrace we need a more detailed log level to make DEBUG logs not so verbose.
+	// DEBUG logs work on the level of whole tables, and TRACE logs work on the row level.
+	LogTrace zapcore.Level = -3
+)
+
+// Trace logs a message at trace level with optional structured fields.
+func (l *CustomLogger) Trace(msg string, fields ...zap.Field) {
+	l.Log(LogTrace, msg, fields...)
+}
 
 // init Clean the logger at the end
 func init() {
@@ -18,28 +37,81 @@ func init() {
 // setupShutdownHook ensures that the logger's buffer is flushed and resources are cleaned up
 // before the application exits.
 func setupShutdownHook() {
-	defer func(logger *zap.Logger) {
+	defer func(logger *CustomLogger) {
 		err := logger.Sync()
 		if err != nil {
 			log.Fatal("ERROR syncing the logger: ", err)
 		}
-	}(Logger) // Flushes buffer, if any
+	}(&Logger) // Flushes buffer, if any
 }
 
 // InitLogger initializes the global logger with given options for JSON formatting, development mode, and verbosity.
-func InitLogger(json bool, dev bool, verbose bool) {
+func InitLogger(json bool, dev bool, verbose bool, trace bool) {
 	if json {
-		if verbose {
-			Logger, _ = zap.NewProduction(zap.IncreaseLevel(zap.DebugLevel))
+		if trace {
+			config := zap.Config{
+				Level:       zap.NewAtomicLevelAt(LogTrace),
+				Development: false,
+				Sampling: &zap.SamplingConfig{
+					Initial:    100,
+					Thereafter: 100,
+				},
+				Encoding: "json",
+				EncoderConfig: zapcore.EncoderConfig{
+					TimeKey:        "ts",
+					LevelKey:       "level",
+					NameKey:        "logger",
+					CallerKey:      "caller",
+					FunctionKey:    zapcore.OmitKey,
+					MessageKey:     "msg",
+					StacktraceKey:  "stacktrace",
+					LineEnding:     zapcore.DefaultLineEnding,
+					EncodeLevel:    TraceLevelEncoder,
+					EncodeTime:     zapcore.EpochTimeEncoder,
+					EncodeDuration: zapcore.SecondsDurationEncoder,
+					EncodeCaller:   zapcore.ShortCallerEncoder,
+				},
+				OutputPaths:      []string{"stderr"},
+				ErrorOutputPaths: []string{"stderr"},
+			}
+			defaultLogger, _ = config.Build()
+		} else if verbose {
+			defaultLogger, _ = zap.NewProduction(zap.IncreaseLevel(zap.DebugLevel))
 		} else {
-			Logger, _ = zap.NewProduction()
+			defaultLogger, _ = zap.NewProduction()
 		}
+		Logger = CustomLogger{*defaultLogger}
 	} else if dev {
-		if verbose {
-			Logger, _ = zap.NewDevelopment()
+		if trace {
+			config := zap.Config{
+				Level:       zap.NewAtomicLevelAt(LogTrace),
+				Development: true,
+				Encoding:    "console",
+				EncoderConfig: zapcore.EncoderConfig{
+					// Keys can be anything except the empty string.
+					TimeKey:        "T",
+					LevelKey:       "L",
+					NameKey:        "N",
+					CallerKey:      "C",
+					FunctionKey:    zapcore.OmitKey,
+					MessageKey:     "M",
+					StacktraceKey:  "S",
+					LineEnding:     zapcore.DefaultLineEnding,
+					EncodeLevel:    TraceLevelEncoder,
+					EncodeTime:     zapcore.ISO8601TimeEncoder,
+					EncodeDuration: zapcore.StringDurationEncoder,
+					EncodeCaller:   zapcore.ShortCallerEncoder,
+				},
+				OutputPaths:      []string{"stderr"},
+				ErrorOutputPaths: []string{"stderr"},
+			}
+			defaultLogger, _ = config.Build()
+		} else if verbose {
+			defaultLogger, _ = zap.NewDevelopment()
 		} else {
-			Logger, _ = zap.NewDevelopment(zap.IncreaseLevel(zap.InfoLevel))
+			defaultLogger, _ = zap.NewDevelopment(zap.IncreaseLevel(zap.InfoLevel))
 		}
+		Logger = CustomLogger{*defaultLogger}
 	} else {
 		// Disable timestamps by setting log flags to 0.
 		// We use this logger for console error output.
@@ -47,7 +119,9 @@ func InitLogger(json bool, dev bool, verbose bool) {
 
 		// constructs console-friendly output, not meant for development
 		level := zap.NewAtomicLevelAt(zap.InfoLevel)
-		if verbose {
+		if trace {
+			level = zap.NewAtomicLevelAt(LogTrace)
+		} else if verbose {
 			level = zap.NewAtomicLevelAt(zap.DebugLevel)
 		}
 
@@ -69,7 +143,8 @@ func InitLogger(json bool, dev bool, verbose bool) {
 			level,   // Log everything from DEBUG and above
 		)
 
-		Logger = zap.New(core, zap.WithCaller(false), zap.AddStacktrace(zapcore.ErrorLevel))
+		defaultLogger = zap.New(core, zap.WithCaller(false), zap.AddStacktrace(zapcore.ErrorLevel))
+		Logger = CustomLogger{*defaultLogger}
 	}
 	setupShutdownHook()
 }
@@ -82,5 +157,16 @@ func IconLevelEncoder(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString("⚠️") // Prepend the symbol to the message
 	} else if l == zapcore.InfoLevel {
 		enc.AppendString("ℹ️") // Prepend the symbol to the message
+	} else if l == LogTrace {
+		enc.AppendString("TRACE")
+	}
+}
+
+// TraceLevelEncoder adds TRACE level serialization, otherwise it prints LEVEL(-3)
+func TraceLevelEncoder(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
+	if l == LogTrace {
+		enc.AppendString("TRACE")
+	} else {
+		enc.AppendString(l.CapitalString())
 	}
 }

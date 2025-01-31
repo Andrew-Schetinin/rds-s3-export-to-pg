@@ -20,7 +20,7 @@ import (
 )
 
 // log a convenience wrapper to shorten code lines
-var log = utils.Logger
+var log = &utils.Logger
 
 func main() {
 	// reading configuration shall be the very first action because it also configures the logger
