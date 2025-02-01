@@ -22,7 +22,7 @@ type FieldMapper struct {
 	Info source.ParquetFileInfo
 
 	// Writer is responsible for persisting mapped data to the target table.
-	Writer *DatabaseWriter
+	Writer *DbWriter
 
 	// Config is a reference to the application configuration, influencing behavior such as table inclusion and exclusion.
 	Config *config.Config
