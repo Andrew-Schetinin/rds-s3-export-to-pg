@@ -1,6 +1,7 @@
 module dbrestore
 
-go 1.23
+// The exact version is required because of https://go.dev/doc/toolchain#version
+go 1.23.4
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.36.0
