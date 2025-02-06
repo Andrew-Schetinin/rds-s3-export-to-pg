@@ -18,7 +18,7 @@ foreign references, triggers, sequences, constraints, etc.
 It is important to note that this is NOT intended as a production-grade backup restore tool. 
 The program attempts to restore the data as close to the original as possible, but because the database schema
 may potentially differ from the RDS snapshot, there may be inconsistencies that may cause partial restore.
-One of possible examples is the case of partitioned tables that may get created/dropped between the moment  
+One of possible examples is the case of partitioned tables that may get created/dropped between the moment
 of creating AWS RDS snapshot and taking the database's schema snapshot.
 
 The data is loaded as efficiently as possible - it is unlikely to be as efficient as pg_restore, 
