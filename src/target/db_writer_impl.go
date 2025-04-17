@@ -45,7 +45,7 @@ func (w *DbWriter) WriteTable(source source.Source, mapper *FieldMapper) (ret in
 		_ = tx.Rollback(context.Background())
 		return
 	}
-	log.Debug("deferConstraints query executed", zap.Any("rows", rows))
+	log.Debug("Disabled triggers for table", zap.String("table", tableName), zap.Any("rows", rows))
 	rows.Close()
 
 	err = w.dropIndexes(tableName, constraints, err, tx, indexInfos)
@@ -69,7 +69,7 @@ func (w *DbWriter) WriteTable(source source.Source, mapper *FieldMapper) (ret in
 		_ = tx.Rollback(context.Background())
 		return
 	}
-	log.Debug("deferConstraints query executed", zap.Any("rows", rows))
+	log.Debug("Enabled triggers for table", zap.String("table", tableName), zap.Any("rows", rows))
 	rows.Close()
 
 	err = tx.Commit(context.Background())
@@ -100,14 +100,34 @@ func (w *DbWriter) writeTableData(source source.Source, mapper *FieldMapper) (re
 		// TODO: replace the database name with a name read from the configuration
 		return -1, fmt.Errorf("source database is not set")
 	}
-	relativePath := fmt.Sprintf("%s/%s", mapper.Config.SourceDatabase, mapper.Info.TableName)
+	// Validate database name and table name to prevent path traversal
+	if utils.FindFilePathCharacters(mapper.Config.SourceDatabase) || utils.FindFilePathCharacters(mapper.Info.TableName) {
+		return -1, fmt.Errorf("invalid database or table name containing path traversal sequences")
+	}
+
+	// Sanitize database and table names by removing any potentially dangerous characters
+	sanitizedDB := filepath.Clean(mapper.Config.SourceDatabase)
+	sanitizedTable := filepath.Clean(mapper.Info.TableName)
+
+	relativePath := fmt.Sprintf("%s/%s", sanitizedDB, sanitizedTable)
+	log.Debug("Using relative path for file access", zap.String("path", relativePath))
+
 	allFiles, err := source.ListFilesRecursively(relativePath)
+	if err != nil {
+		return -1, fmt.Errorf("failed to list files: %w", err)
+	}
 	slices.Sort(allFiles)
 
 	// Group files by their subfolders
 	groupedFiles := make(map[string][]string) // map[subfolder][]files
 	for _, file := range allFiles {
-		subfolder := filepath.Dir(file) // Get the subfolder path
+		// Validate file path to prevent path traversal
+		if strings.Contains(file, "..") {
+			log.Warn("Skipping file with suspicious path", zap.String("file", file))
+			continue
+		}
+
+		subfolder := filepath.Clean(filepath.Dir(file)) // Get the sanitized subfolder path
 		groupedFiles[subfolder] = append(groupedFiles[subfolder], file)
 	}
 
@@ -155,12 +175,20 @@ func (w *DbWriter) writeTableData(source source.Source, mapper *FieldMapper) (re
 // It validates the table size before and after the operation to ensure data consistency.
 // Returns the number of rows written and an error if any issues occur during the process.
 func (w *DbWriter) writeTablePart(src source.Source, mapper *FieldMapper, relativePath string) (ret int, err error) {
-	file := src.GetFile(relativePath)
+	// Validate the relative path to prevent path traversal
+	if strings.Contains(relativePath, "..") {
+		return 0, fmt.Errorf("invalid relative path containing path traversal sequences: %s", relativePath)
+	}
+
+	// Use filepath.Clean to normalize the path
+	cleanPath := filepath.Clean(relativePath)
+
+	file := src.GetFile(cleanPath)
 	copyFromSource := source.NewParquetReader(file, mapper)
 	if copyFromSource.IsEmpty() {
-		log.Debug("Skipping empty Parquet file", zap.String("file", relativePath))
+		log.Debug("Skipping empty Parquet file", zap.String("file", cleanPath))
 		if copyFromSource.LastError() != nil && copyFromSource.LastError() != io.EOF {
-			err = fmt.Errorf("skipping empty Parquet file '%s': %w", relativePath, copyFromSource.LastError())
+			err = fmt.Errorf("skipping empty Parquet file '%s': %w", cleanPath, copyFromSource.LastError())
 		}
 	} else {
 		var oldTableSize, newBatchCopySize, newTableSize int64

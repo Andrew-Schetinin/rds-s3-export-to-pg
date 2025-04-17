@@ -114,7 +114,7 @@ func (m *FieldMapper) Transform(x parquet.Value) (value any, err error) {
 		zap.Any("type", x.Kind()), zap.Int("columnIndex", columnIndex),
 		zap.String("column", column.ColumnName), zap.String("originalType", column.OriginalType))
 	panic("unexpected column type: " + column.OriginalType)
-	return stringValue, nil
+	//return stringValue, nil
 }
 
 // hasUserDefinedColumn checks if any column in the Parquet file has an original type of "USER-DEFINED".

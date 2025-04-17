@@ -6,17 +6,13 @@ import (
 	source2 "dbrestore/source"
 	"dbrestore/target"
 	"dbrestore/utils"
-	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 	"time"
-
-	_ "github.com/aws/aws-sdk-go-v2/config"
-	_ "github.com/aws/aws-sdk-go-v2/service/s3"
-	_ "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // log a convenience wrapper to shorten code lines
@@ -33,14 +29,26 @@ func main() {
 		source = source2.NewLocalSource(conf.LocalDir)
 	} else {
 		log.Info("Using AWS S3 bucket: ", zap.String("bucket", conf.AWSBucketPath))
-		// Create a credential provider with static credentials.
-		credentialsProvider := credentials.NewStaticCredentialsProvider("YOUR_ACCESS_KEY_ID",
-			"YOUR_SECRET_ACCESS_KEY", "") // Last parameter is session token, usually empty
 
-		cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithCredentialsProvider(credentialsProvider),
-			config.WithRegion("YOUR_AWS_REGION")) // e.g., "us-east-1"
+		// Use credentials from configuration
+		var cfg aws.Config
+		var err error
+
+		if conf.AWSAccessKey != "" && conf.AWSSecretKey != "" {
+			// Create a credential provider with credentials from configuration
+			credentialsProvider := credentials.NewStaticCredentialsProvider(conf.AWSAccessKey,
+				conf.AWSSecretKey, "") // Last parameter is session token, usually empty
+
+			cfg, err = config.LoadDefaultConfig(context.TODO(),
+				config.WithCredentialsProvider(credentialsProvider),
+				config.WithRegion(conf.AWSRegion))
+		} else {
+			// Use default credentials provider chain (environment variables, shared credentials file, etc.)
+			cfg, err = config.LoadDefaultConfig(context.TODO(), config.WithRegion(conf.AWSRegion))
+		}
+
 		if err != nil {
-			log.Fatal("failed to load configuration", zap.Error(err))
+			log.Fatal("failed to load AWS configuration", zap.Error(err))
 		}
 
 		client := s3.NewFromConfig(cfg)
@@ -51,11 +59,11 @@ func main() {
 			log.Fatal("failed to list buckets", zap.Error(err))
 		}
 
-		fmt.Println("Buckets:")
+		log.Debug("Available S3 buckets:")
 		for _, bucket := range output.Buckets {
-			fmt.Println(*bucket.Name)
+			log.Debug("Bucket: ", zap.String("name", *bucket.Name))
 		}
-		log.Error("ERROR: Not implemented yet")
+		log.Error("ERROR: S3 source not fully implemented yet")
 		return
 	}
 
