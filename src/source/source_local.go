@@ -125,6 +125,9 @@ func (l *LocalSource) ListFilesRecursively(relativePath string) (ret []string, e
 	for _, entry := range entries {
 		if entry.IsDir() {
 			entryPath := filepath.Join(dir.RelativePath, entry.Name())
+			if filepath.Dir(entryPath) != dir.RelativePath {
+				return []string{}, fmt.Errorf("unsafe path element: %s", entry.Name())
+			}
 			subFiles, err := l.ListFilesRecursively(entryPath)
 			if err != nil {
 				return []string{}, err
