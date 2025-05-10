@@ -1,7 +1,7 @@
 module dbrestore
 
 // The exact version is required because of https://go.dev/doc/toolchain#version
-go 1.24.0
+go 1.24.3
 
 // This is something specific to GitHub
 // go:toolchain go1.23.4
