@@ -1,10 +1,11 @@
 package utils
 
 import (
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"log"
 	"os"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // CustomLogger is a logger type that embeds zap.Logger to provide logging functionalities with additional features.
@@ -40,7 +41,8 @@ func setupShutdownHook() {
 	defer func(logger *CustomLogger) {
 		err := logger.Sync()
 		if err != nil {
-			log.Fatal("ERROR syncing the logger: ", err)
+			// instead of fatal, we just log the error and continue
+			log.Println("Expected error in unit tests while syncing the logger: ", err)
 		}
 	}(&Logger) // Flushes buffer, if any
 }

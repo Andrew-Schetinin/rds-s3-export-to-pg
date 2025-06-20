@@ -6,12 +6,13 @@ import (
 	"dbrestore/source"
 	"dbrestore/utils"
 	"fmt"
-	"github.com/jackc/pgx/v5"
-	"gopkg.in/yaml.v3"
-	_ "gopkg.in/yaml.v3"
 	"io"
 	"math/rand"
 	"os"
+
+	"github.com/jackc/pgx/v5"
+	"gopkg.in/yaml.v3"
+	_ "gopkg.in/yaml.v3"
 
 	"testing"
 )
@@ -55,10 +56,10 @@ func TestCreateTestDatabase(t *testing.T) {
 
 	t.Run("Create test database", func(t *testing.T) {
 		// initialize configuration
-		pwd := conf[passwordKey].(string)
-		if pwd == "" {
+		if conf[passwordKey] == nil { // if the password is not set at all, the test will fail
 			t.Errorf("Local PostgreSQL password not found in the test config file: %s", testConfigFileName)
 		}
+		pwd := conf[passwordKey].(string) // it is okay to return an empty password - we support that case
 		conStr := fmt.Sprintf(localConnectionString, pwd)
 
 		// Connect to PostgreSQL default database (to be able to create a new test database)

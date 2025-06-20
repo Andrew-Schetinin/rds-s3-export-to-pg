@@ -131,3 +131,18 @@ This file should contain a single line with the password:
 ```yaml
 password: POSTGRES_USER_PASSWORD 
 ```
+
+In a situation when the current user has no password, an empty string has to be specified.
+
+```yaml
+password: ""
+```
+
+In a situation when PostgreSQL is installed with the current user as the primary admin, 
+and there is no `postgres` role created, it should be created manually.
+
+```sql
+CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE INHERIT NOREPLICATION;
+```
+
+Note that this assumes a local PostgreSQL installation for development purposes, inaccessible from Internet.
