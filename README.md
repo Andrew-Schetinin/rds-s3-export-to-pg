@@ -97,6 +97,13 @@ go get -u
 This is especially important before building the Docker image.
 TODO: Ideally, it should be automated as part of the regular build.
 
+Checking for vulnerabilities:
+
+```bash
+cd src
+govulncheck ./...
+```
+
 ## 2.2. Compilation
 
 Before compilation, one must generate that Swagger documentation as described above, 
