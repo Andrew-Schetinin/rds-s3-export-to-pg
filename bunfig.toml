@@ -1,0 +1,7 @@
+[install]
+
+# Only install package versions published at least 5 days ago
+minimumReleaseAge = 432000
+
+# Optional: Bypass the 5-day age gate for known, highly trusted tooling
+minimumReleaseAgeExcludes = ["typescript"]

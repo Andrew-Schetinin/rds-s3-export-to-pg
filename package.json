@@ -1,0 +1,14 @@
+{
+  "name": "rds-s3-export-to-pg",
+  "description": "This configuration file is only needed for OpenSpec tool. Use bun and volta to maintain it.",
+  "private": true,
+  "scripts": {
+    
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "^1.3.1"
+  },
+  "volta": {
+    "node": "24.16.0"
+  }
+}
