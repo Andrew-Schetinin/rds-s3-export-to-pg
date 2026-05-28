@@ -1,0 +1,11 @@
+#!/bin/sh
+commit_msg=$(cat "$1")
+pattern='^(feat|fix|docs|refactor|test|chore|ci|perf|style|build|revert)\(#[0-9]+\): .+'
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo "Invalid commit message format."
+  echo "Required: type(#ticket): description"
+  echo "Example:  feat(#42): add S3 source support"
+  echo "Types:    feat, fix, docs, refactor, test, chore, ci, perf, style, build, revert"
+  exit 1
+fi
