@@ -153,7 +153,7 @@ func InitLogger(json bool, dev bool, verbose bool, trace bool) {
 
 // IconLevelEncoder serializes a Level to an icon - only for more important levels.
 func IconLevelEncoder(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
-	if l == zapcore.ErrorLevel || l == zapcore.FatalLevel { // Check if it's an error message
+	if l == zapcore.ErrorLevel || l == zapcore.FatalLevel { //nolint:staticcheck // if-chain is intentional; switch would obscure the fallthrough logic
 		enc.AppendString("❌") // Prepend the symbol to the message
 	} else if l == zapcore.WarnLevel {
 		enc.AppendString("⚠️") // Prepend the symbol to the message

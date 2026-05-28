@@ -10,10 +10,9 @@ import (
 var log = &utils.Logger
 
 type S3Source struct {
-	path string
 }
 
-func (l S3Source) getFile(path string) FileInfo {
+func (l S3Source) getFile(_ string) FileInfo { //nolint:unused // S3 stub, will be used when S3 source is implemented
 	//TODO implement me
 	panic("implement me")
 }

@@ -21,11 +21,11 @@ const testConfigFileName = "../.test_config.yaml"
 
 const passwordKey = "password"
 
-const localConnectionString = "postgresql://postgres:%s@localhost:5432/postgres"
+const localConnectionString = "postgresql://postgres:%s@localhost:5432/postgres" //nolint:gosec // test credential template, not a real password
 
 const testDatabaseNamePrefix = "test_database_"
 
-const localTestConnectionString = "postgresql://postgres:%s@localhost:5432/%s"
+const localTestConnectionString = "postgresql://postgres:%s@localhost:5432/%s" //nolint:gosec // test credential template, not a real password
 
 func loadTestConfig() map[string]interface{} {
 	// Open the YAML file
@@ -59,7 +59,7 @@ func TestCreateTestDatabase(t *testing.T) {
 		if conf[passwordKey] == nil { // if the password is not set at all, the test will fail
 			t.Errorf("Local PostgreSQL password not found in the test config file: %s", testConfigFileName)
 		}
-		pwd := conf[passwordKey].(string) // it is okay to return an empty password - we support that case
+		pwd := conf[passwordKey].(string) //nolint:forcetypeassert // nil case handled above; empty string is valid
 		conStr := fmt.Sprintf(localConnectionString, pwd)
 
 		// Connect to PostgreSQL default database (to be able to create a new test database)
@@ -77,7 +77,7 @@ func TestCreateTestDatabase(t *testing.T) {
 		// create a test database
 
 		// Append a random number to the testDatabaseNamePrefix
-		randomSuffix := fmt.Sprintf("%d", 1000+rand.Intn(9000))
+		randomSuffix := fmt.Sprintf("%d", 1000+rand.Intn(9000)) //nolint:gosec // test suffix, no security requirement
 		testDatabaseName := testDatabaseNamePrefix + randomSuffix
 
 		// Attempt to create the test database

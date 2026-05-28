@@ -1,0 +1,23 @@
+version: "2"
+
+run:
+  timeout: 3m
+
+linters:
+  default: standard
+  enable:
+    - copyloopvar
+    - durationcheck
+    - errorlint
+    - fatcontext
+    - forcetypeassert
+    - gosec
+    - revive
+  settings:
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+        - name: exported
+          disabled: true
+

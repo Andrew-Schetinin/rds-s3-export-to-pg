@@ -131,13 +131,13 @@ func (w *DbWriter) restoreIndexes(tableName string, indexInfos []IndexInfo, err 
 	}
 
 	for _, constraint := range constraints {
-		var createSql = fmt.Sprintf(addConstraint, utils.SanitizeTableName(tableName), utils.SanitizeTableName(constraint.Name),
+		var createSQL = fmt.Sprintf(addConstraint, utils.SanitizeTableName(tableName), utils.SanitizeTableName(constraint.Name),
 			constraint.Command)
-		if w.regExPrimary.MatchString(createSql) || w.regExCon.MatchString(constraint.Command) {
+		if w.regExPrimary.MatchString(createSQL) || w.regExCon.MatchString(constraint.Command) {
 			log.Debug("Skipping the primary key constraint: ", zap.String("command", constraint.Command))
 		} else {
-			log.Info(createSql)
-			_, err = tx.Exec(context.Background(), createSql)
+			log.Info(createSQL)
+			_, err = tx.Exec(context.Background(), createSQL)
 			if err != nil {
 				log.Error("ERROR: ", zap.Error(err))
 				break
@@ -150,12 +150,12 @@ func (w *DbWriter) restoreIndexes(tableName string, indexInfos []IndexInfo, err 
 // dropIndexes removes constraints and indexes from the specified table using the provided transaction and error handling.
 func (w *DbWriter) dropIndexes(tableName string, constraints []ConstraintInfo, err error, tx pgx.Tx, indexInfos []IndexInfo) error {
 	for _, constraint := range constraints {
-		var dropSql = fmt.Sprintf(dropConstraint, utils.SanitizeTableName(tableName), utils.SanitizeTableName(constraint.Name))
+		var dropSQL = fmt.Sprintf(dropConstraint, utils.SanitizeTableName(tableName), utils.SanitizeTableName(constraint.Name))
 		if w.regExPrimary.MatchString(constraint.Command) {
 			log.Debug("Skipping the primary key constraint: ", zap.String("command", constraint.Command))
 		} else {
-			log.Info(dropSql)
-			_, err = tx.Exec(context.Background(), dropSql)
+			log.Info(dropSQL)
+			_, err = tx.Exec(context.Background(), dropSQL)
 			if err != nil {
 				log.Error("ERROR: ", zap.Error(err), zap.String("command", constraint.Command))
 				break
@@ -164,12 +164,12 @@ func (w *DbWriter) dropIndexes(tableName string, constraints []ConstraintInfo, e
 	}
 
 	for _, indexInfo := range indexInfos {
-		var dropSql = fmt.Sprintf(dropIndex, utils.SanitizeTableName(indexInfo.Name))
+		var dropSQL = fmt.Sprintf(dropIndex, utils.SanitizeTableName(indexInfo.Name))
 		if w.regExIdx.MatchString(indexInfo.Def) {
 			log.Debug("Skipping the unique index: ", zap.String("command", indexInfo.Def))
 		} else {
-			log.Info(dropSql)
-			_, err = tx.Exec(context.Background(), dropSql)
+			log.Info(dropSQL)
+			_, err = tx.Exec(context.Background(), dropSQL)
 			if err != nil {
 				log.Error("ERROR: ", zap.Error(err), zap.String("command", indexInfo.Def))
 				break
@@ -230,7 +230,7 @@ func (w *DbWriter) getFKeys() (*dag.FKeysGraph[Relation], error) {
 	fkMap := dag.NewFKeysGraph[Relation](1000)
 	count := 0
 	for rows.Next() {
-		count += 1
+		count++
 		var r Relation
 		var foreignSchema, foreignTable, foreignColumns sql.NullString
 		var constraintType rune

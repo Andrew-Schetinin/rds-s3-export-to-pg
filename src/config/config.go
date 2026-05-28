@@ -319,7 +319,7 @@ func (c *Config) override(argsInstance *Config) {
 				if field.Bool() {
 					cField.Set(field)
 				}
-			case reflect.Ptr:
+			case reflect.Pointer:
 				if !field.IsNil() {
 					cField.Set(field)
 				}

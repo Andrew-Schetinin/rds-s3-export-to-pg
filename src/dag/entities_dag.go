@@ -45,7 +45,7 @@ func (n *Node[T]) AddChild(name string, relation T) {
 		list = make([]T, 1)
 		n.Children[name] = list
 	}
-	list = append(list, relation)
+	n.Children[name] = append(list, relation)
 }
 
 // FKeysGraph the Graph of all tables and FK relations
@@ -262,7 +262,7 @@ func (g *FKeysGraph[T]) dfs(index int, visited map[int]struct{}, recStack []int)
 
 	// Remove nodeName from the recursion stack after processing all its neighbors.
 	if len(recStack) > 0 && recStack[len(recStack)-1] == index {
-		recStack = recStack[:len(recStack)-1]
+		recStack = recStack[:len(recStack)-1] //nolint:staticcheck // slice is passed by value; modification is intentional local cleanup
 	} else {
 		log.Error("dfs(): FATAL: The node is not found in recStack", zap.String("node.Name", node.Name),
 			zap.Int("node.Index", node.Index), zap.Any("recStack", recStack))

@@ -12,87 +12,39 @@ This is a Go command-line tool for restoring PostgreSQL databases from AWS RDS P
 - Data loading order is critical and is managed via topological sorting based on foreign key dependencies
 - The tool is NOT a replacement for standard PostgreSQL backup/restore tools
 
-## OpenSpec
+For developer setup, tooling, and git workflow see [DEVELOPMENT.md](DEVELOPMENT.md).
 
-This project uses [OpenSpec](https://github.com/fission-ai/openspec) (`@fission-ai/openspec`) for spec-driven development. Specs and changes live in `openspec/`. Node.js is **only** needed for OpenSpec — there is no TypeScript development in this repo.
+## Commit Format
 
-### First-time setup
+Every commit must follow this format (enforced by Husky):
 
-Requires [Volta](https://volta.sh/) and [Bun](https://bun.sh/). Volta pins the Node.js version automatically via `package.json`.
-
-```bash
-# Install Bun (if not already installed)
-volta install bun
-
-# Install OpenSpec and its dependencies
-bun install
+```
+type(#ticket): description
 ```
 
-### Running OpenSpec
+Allowed types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `perf`, `style`, `build`, `revert`.
+
+## Build and Test Commands
 
 ```bash
-bunx openspec
+cd src && go build                                           # compile
+cd src && go test -v ./...                                   # all tests
+cd src && go test -v -skip "TestCreateTestDatabase" ./...   # skip DB tests (CI)
+cd src && golangci-lint run ./...                            # lint
 ```
 
-### Project layout
-
-- `openspec/config.yaml` — project context and per-artifact rules passed to the AI
-- `openspec/specs/` — generated spec artifacts
-- `openspec/changes/` — change records (archived under `changes/archive/`)
-
-## Build and Development Commands
-
-### Compilation
-```bash
-cd src
-rm -f ./dbrestore          # Clean old binary before rebuilding
-go build                   # Creates 'dbrestore' executable
-```
-
-### Running Tests
-```bash
-cd src
-go test -v ./...           # Run all tests
-go test -v -skip "TestCreateTestDatabase" ./...  # Skip database-dependent tests (used in CI)
-```
-
-**Testing Requirements:**
-Tests that interact with PostgreSQL require:
-- Local PostgreSQL server running on localhost:5432 with user `postgres`
-- Configuration file: `src/.test_config.yaml` containing the password:
-  ```yaml
-  password: YOUR_PASSWORD_HERE
-  ```
-
-### Dependency Management
-```bash
-cd src
-go mod tidy                # Update go.mod and go.sum
-go get -u                  # Update all dependencies to latest versions
-govulncheck ./...          # Check for security vulnerabilities
-```
-
-### Running the Application
-```bash
-cd src
-./dbrestore --help         # Show all command-line options
-```
-
-**Common usage patterns:**
-- List available databases: `./dbrestore --dir /path/to/export --list`
-- Restore with local files: `./dbrestore --dir /path/to/export --db-name mydb --db-user postgres --db-password secret`
-- Truncate before restore: `./dbrestore --dir /path/to/export --db-name mydb --truncate-all`
-- Include/exclude tables: `./dbrestore --dir /path/to/export --include-tables table1,table2 --db-name mydb`
-- Skip non-empty tables: `./dbrestore --dir /path/to/export --skip-not-empty --db-name mydb`
+Database tests require a local PostgreSQL instance and `src/.test_config.yaml` — see DEVELOPMENT.md.
 
 ## Architecture Overview
 
 ### Data Flow
-1. **Configuration Loading** (`config/`) - Loads settings from command-line arguments, environment variables
-2. **Source Layer** (`source/`) - Abstracts file access (local or S3)
-3. **Parquet Reading** - Parses Parquet files and extracts table metadata (via AWS RDS export manifest files in JSON)
-4. **Table Ordering** (`dag/`) - Builds dependency graph from foreign keys and performs topological sort
-5. **Data Writing** (`target/`) - Connects to PostgreSQL and loads data with proper constraint/trigger management
+
+1. **Configuration Loading** (`config/`) - Loads settings from environment variables and command-line arguments
+2. **Orchestration** (`main.go`) - Ties all packages together; entry point that drives the restore pipeline
+3. **Source Layer** (`source/`) - Abstracts file access (local or S3)
+4. **Parquet Reading** - Parses Parquet files and extracts table metadata (via AWS RDS export manifest files in JSON)
+5. **Table Ordering** (`dag/`) - Builds dependency graph from foreign keys and performs topological sort
+6. **Data Writing** (`target/`) - Connects to PostgreSQL and loads data with proper constraint/trigger management
 
 ### Key Packages
 
@@ -100,8 +52,9 @@ cd src
 - `source.go` - Defines the `Source` interface for file access (local or remote)
 - `source_local.go` - Implements local filesystem access
 - `source_s3.go` - Stub for S3 implementation (not yet complete)
-- `source_reader.go` - Reads RDS export manifests and lists available tables
+- `source_reader.go` - Reads RDS export manifests; defines `ColumnInfo`, `ParquetFileInfo` structs and `Reader` with `IterateOverTables()`/`ListDatabases()` methods
 - `parquet_reader.go` - Implements `pgx.CopyFromSource` interface to stream Parquet data
+- `transformer.go` - Defines the `Transformer` interface for converting Parquet values
 
 **`target/` - Database Writing**
 - `db_writer.go` - Core interface with connection management and table ordering
@@ -115,7 +68,8 @@ cd src
 
 **`config/` - Configuration Management**
 - Singleton pattern with lazy initialization
-- Priority order: defaults → environment variables → config file → command-line arguments
+- Priority order: defaults → environment variables → command-line arguments
+- Config file loading is not yet implemented (stub with TODO)
 - Table filtering via `--include-tables` and `--exclude-tables`
 - Supports incremental loads with `--skip-not-empty`
 
@@ -162,24 +116,15 @@ Key flags:
 - `--list` - List available databases and exit
 - `--json-logs` / `--verbose` / `--trace` / `--dev-logs` - Logging control
 
-### Testing Strategy
-
-- Unit tests exist for DAG sorting, CSV utilities, and database operations
-- Database tests require local PostgreSQL and are skipped in CI
-- DAG tests validate topological sorting with complex dependency scenarios
-
 ## Known Limitations & Future Work
 
-From README.md:
 1. **Partitioned tables** - Not yet supported
 2. **PostGIS data types** - Limited support
 3. **S3 loading** - Stub only, not implemented
 4. **DAG cycles** - Cannot handle cyclic foreign key references
-5. **Limited platforms** - Binaries not yet built for macOS arm64, Ubuntu amd64, Windows amd64
 
 ## Project Status
 
 - Version: 0.1 (see `version.yaml`)
 - **Not production-ready** - Use with test data only
 - Active development with open issues on GitHub
-

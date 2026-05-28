@@ -1,6 +1,7 @@
 package source
 
 import (
+	"errors"
 	"fmt"
 	"github.com/parquet-go/parquet-go"
 	"go.uber.org/zap"
@@ -114,7 +115,7 @@ func (r *ParquetReader) Open(fileInfo FileInfo) error {
 
 	// Open the Parquet file
 	fileName := fileInfo.LocalPath
-	osFile, err := os.Open(fileName)
+	osFile, err := os.Open(fileName) //nolint:gosec // reading from user-supplied export directory is intentional
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", fileName, err)
 	}
@@ -181,7 +182,7 @@ func (r *ParquetReader) StartReading() (int, error) {
 				row := make([]parquet.Row, 1)
 				rowCount, err := rowReader.ReadRows(row)
 				if err != nil {
-					if err == io.EOF {
+					if errors.Is(err, io.EOF) {
 						break
 					}
 					log.Error("Error reading row", zap.Error(err))
