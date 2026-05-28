@@ -1,0 +1,41 @@
+version: "2"
+
+run:
+  timeout: 3m
+
+linters:
+  default: standard
+  enable:
+    - copyloopvar
+    - durationcheck
+    - errorlint
+    - fatcontext
+    - forcetypeassert
+    - gosec
+    - revive
+  settings:
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+        - name: exported
+          disabled: true
+
+issues:
+  exclude-rules:
+    # Test files: hardcoded credentials and weak random are acceptable in tests
+    - path: "_test\\.go"
+      linters:
+        - gosec
+    # SQL built with fmt.Sprintf uses sanitized table names via utils.SanitizeTableName (intentional)
+    - linters:
+        - gosec
+      text: "G201"
+    # Reading files from user-supplied export directories is the whole point of the tool (intentional)
+    - linters:
+        - gosec
+      text: "G304"
+    # S3Source is a stub; its unexported method is unused until S3 is implemented
+    - path: "source_s3\\.go"
+      linters:
+        - unused

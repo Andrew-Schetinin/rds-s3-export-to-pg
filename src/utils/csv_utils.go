@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
@@ -130,7 +131,7 @@ func wrapPipeReaderWithProcessing(ctx context.Context, pr *io.PipeReader, proces
 			default:
 				n, err := pr.Read(buf)
 				if err != nil {
-					if err != io.EOF {
+					if !errors.Is(err, io.EOF) {
 						Logger.Error("Error reading from original pipe", zap.Error(err))
 					}
 					return

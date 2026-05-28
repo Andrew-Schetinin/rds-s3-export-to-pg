@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+unformatted=$(gofmt -l ./src/)
+if [ -n "$unformatted" ]; then
+  echo "gofmt: the following files need formatting:"
+  echo "$unformatted"
+  echo "Run: gofmt -w ./src/"
+  exit 1
+fi
+
+cd src && golangci-lint run ./...

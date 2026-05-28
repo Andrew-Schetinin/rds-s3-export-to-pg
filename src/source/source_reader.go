@@ -140,7 +140,10 @@ func (r *Reader) processFile(relativePath string, tableMap *map[string]bool) (re
 	ret = make(ParquetFileInfoList, 0)
 	errorCount := 0
 	for mv := range decoder.Stream() {
-		m := mv.Value.(map[string]interface{})
+		m, ok := mv.Value.(map[string]interface{})
+		if !ok {
+			continue
+		}
 		_, nodeWarning := m["warningMessage"]
 		_, nodeTable := m["tableStatistics"]
 		if nodeWarning {
@@ -384,8 +387,12 @@ func (r *Reader) validateExportInfo() (err error) {
 		return fmt.Errorf("key 'percentProgress' not found in JSON data")
 	}
 
+	progressFloat, ok := percentProgress.(float64)
+	if !ok {
+		return fmt.Errorf("key 'percentProgress' is not a float64, got %T", percentProgress)
+	}
 	const percentProgress100 = 100
-	if math.Abs(percentProgress.(float64)-float64(percentProgress100)) > 0.000001 {
+	if math.Abs(progressFloat-float64(percentProgress100)) > 0.000001 {
 		return fmt.Errorf("value of 'percentProgress' does not match the expected '%d', got '%v'",
 			percentProgress100, percentProgress)
 	}

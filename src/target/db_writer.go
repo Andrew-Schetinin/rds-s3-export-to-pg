@@ -168,7 +168,7 @@ func (w *DbWriter) GetTablesOrdered() (ret []string, err error) {
 				if dependentIndex, exists := tableIndexMap[dependentTableName]; exists {
 					// self-references are permitted
 					if parentIndex <= dependentIndex && node.Name != dependentTableName {
-						errorCount += 1
+						errorCount++
 						log.Error("Parent table index is not larger than dependent table index",
 							zap.String("parent_table", node.Name),
 							zap.String("dependent_table", dependentTableName),

@@ -40,6 +40,43 @@ bunx openspec
 - `openspec/specs/` — generated spec artifacts
 - `openspec/changes/` — change records (archived under `changes/archive/`)
 
+## Git Workflow
+
+### Commit format
+
+Every commit must follow this format (enforced by Husky's `commit-msg` hook):
+
+```
+type(#ticket): description
+```
+
+Allowed types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `perf`, `style`, `build`, `revert`.
+
+Examples:
+```
+feat(#42): add S3 source support
+fix(#87): handle nil pointer in parquet reader
+```
+
+### Pre-commit hook
+
+Husky also runs a `pre-commit` hook on every commit that:
+1. Checks all Go files with `gofmt` — reports which files need formatting and exits if any do
+2. Runs `golangci-lint` across `./src/`
+
+Both `gofmt` and `golangci-lint` must be installed locally. Husky itself is installed automatically via `bun install` (the `prepare` script activates the hooks).
+
+### Releases
+
+Releases are fully automated via goreleaser (`.goreleaser.yaml`). Push a tag to trigger the release workflow (`.github/workflows/release.yml`):
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+This builds binaries for Linux, macOS, and Windows (amd64 + arm64), packages them as `.tar.gz`/`.zip`, generates `checksums.txt`, and publishes a GitHub Release with a changelog grouped by commit type. Commits tagged as `chore`, `docs`, `ci`, or `test` are excluded from the changelog.
+
 ## Build and Development Commands
 
 ### Compilation
@@ -88,11 +125,12 @@ cd src
 ## Architecture Overview
 
 ### Data Flow
-1. **Configuration Loading** (`config/`) - Loads settings from command-line arguments, environment variables
-2. **Source Layer** (`source/`) - Abstracts file access (local or S3)
-3. **Parquet Reading** - Parses Parquet files and extracts table metadata (via AWS RDS export manifest files in JSON)
-4. **Table Ordering** (`dag/`) - Builds dependency graph from foreign keys and performs topological sort
-5. **Data Writing** (`target/`) - Connects to PostgreSQL and loads data with proper constraint/trigger management
+1. **Configuration Loading** (`config/`) - Loads settings from environment variables and command-line arguments
+2. **Orchestration** (`main.go`) - Ties all packages together; entry point that drives the restore pipeline
+3. **Source Layer** (`source/`) - Abstracts file access (local or S3)
+4. **Parquet Reading** - Parses Parquet files and extracts table metadata (via AWS RDS export manifest files in JSON)
+5. **Table Ordering** (`dag/`) - Builds dependency graph from foreign keys and performs topological sort
+6. **Data Writing** (`target/`) - Connects to PostgreSQL and loads data with proper constraint/trigger management
 
 ### Key Packages
 
@@ -100,8 +138,9 @@ cd src
 - `source.go` - Defines the `Source` interface for file access (local or remote)
 - `source_local.go` - Implements local filesystem access
 - `source_s3.go` - Stub for S3 implementation (not yet complete)
-- `source_reader.go` - Reads RDS export manifests and lists available tables
+- `source_reader.go` - Reads RDS export manifests; defines `ColumnInfo`, `ParquetFileInfo` structs and `Reader` with `IterateOverTables()`/`ListDatabases()` methods
 - `parquet_reader.go` - Implements `pgx.CopyFromSource` interface to stream Parquet data
+- `transformer.go` - Defines the `Transformer` interface for converting Parquet values
 
 **`target/` - Database Writing**
 - `db_writer.go` - Core interface with connection management and table ordering
@@ -115,7 +154,8 @@ cd src
 
 **`config/` - Configuration Management**
 - Singleton pattern with lazy initialization
-- Priority order: defaults → environment variables → config file → command-line arguments
+- Priority order: defaults → environment variables → command-line arguments
+- Config file loading is not yet implemented (stub with TODO)
 - Table filtering via `--include-tables` and `--exclude-tables`
 - Supports incremental loads with `--skip-not-empty`
 
@@ -175,7 +215,6 @@ From README.md:
 2. **PostGIS data types** - Limited support
 3. **S3 loading** - Stub only, not implemented
 4. **DAG cycles** - Cannot handle cyclic foreign key references
-5. **Limited platforms** - Binaries not yet built for macOS arm64, Ubuntu amd64, Windows amd64
 
 ## Project Status
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"dbrestore/source"
 	"dbrestore/utils"
+	"errors"
 	"fmt"
 	"go.uber.org/zap"
 	"io"
@@ -187,7 +188,7 @@ func (w *DbWriter) writeTablePart(src source.Source, mapper *FieldMapper, relati
 	copyFromSource := source.NewParquetReader(file, mapper)
 	if copyFromSource.IsEmpty() {
 		log.Debug("Skipping empty Parquet file", zap.String("file", cleanPath))
-		if copyFromSource.LastError() != nil && copyFromSource.LastError() != io.EOF {
+		if copyFromSource.LastError() != nil && !errors.Is(copyFromSource.LastError(), io.EOF) {
 			err = fmt.Errorf("skipping empty Parquet file '%s': %w", cleanPath, copyFromSource.LastError())
 		}
 	} else {
@@ -205,7 +206,7 @@ func (w *DbWriter) writeTablePart(src source.Source, mapper *FieldMapper, relati
 			// by default, we prefer the binary format - it is the standard format in pgx
 			copied, err = w.copyFromBinary(mapper, copyFromSource)
 		}
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			err = fmt.Errorf("writing the table '%s' failed for %d rows: %w",
 				mapper.Info.TableName, copyFromSource.RowCount(), err)
 		} else {
