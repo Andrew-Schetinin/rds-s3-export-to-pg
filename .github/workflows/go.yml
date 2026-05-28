@@ -12,6 +12,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
 
   build:
@@ -23,6 +26,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: './src/go.mod'
+        cache-dependency-path: './src/go.sum'
 
     - name: Build
       working-directory: ./src
