@@ -1,6 +1,6 @@
 # Type Mapper Gap Analysis
 
-Comparison of `testdata/comprehensive_test_schema.sql` against
+Comparison of `testdata/test_schema.sql` against
 `src/target/field_mapper.go` (`Transform` method).
 
 Types or features not handled by the tool are listed below.

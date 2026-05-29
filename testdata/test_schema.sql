@@ -11,7 +11,7 @@
 --
 -- USAGE (fresh database required — not idempotent):
 --   createdb test_comprehensive
---   psql -d test_comprehensive -f testdata/comprehensive_test_schema.sql
+--   psql -d test_comprehensive -f testdata/test_schema.sql
 --
 -- To reset: dropdb test_comprehensive && createdb test_comprehensive
 --

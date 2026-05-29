@@ -1,10 +1,10 @@
 ## ADDED Requirements
 
 ### Requirement: Schema file exists and is loadable
-The project SHALL provide a single SQL DDL file at `testdata/comprehensive_test_schema.sql` that can be applied to a fresh PostgreSQL database (with PostGIS and HSTORE extensions) using `psql -f` without errors.
+The project SHALL provide a single SQL DDL file at `testdata/test_schema.sql` that can be applied to a fresh PostgreSQL database (with PostGIS and HSTORE extensions) using `psql -f` without errors.
 
 #### Scenario: Clean load
-- **WHEN** `psql -f testdata/comprehensive_test_schema.sql` is run against an empty database with PostGIS and HSTORE available
+- **WHEN** `psql -f testdata/test_schema.sql` is run against an empty database with PostGIS and HSTORE available
 - **THEN** all objects are created without errors and the transaction commits successfully
 
 #### Scenario: Idempotent extension creation
