@@ -2,18 +2,28 @@ schema: spec-driven
 
 # Project context (optional)
 # This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
 context: |
-    Tech stack: Go
-    Conventions: We use conventional commits
-    Domain: development tool
+  Tech stack: Go, PostgreSQL, AWS S3, Apache Parquet
+  Conventions: Conventional commits — format: type(#ticket): description
+  Domain: CLI restore tool that reads Parquet files from AWS RDS snapshots
+    (local disk or S3) and loads data into a target PostgreSQL database.
+  Architecture:
+    - source/   — file access abstraction (local + S3 stub)
+    - target/   — PostgreSQL writer with constraint/trigger/index management
+    - dag/      — topological sort of tables by foreign key dependencies
+    - config/   — singleton config from env vars + CLI flags
+  Key constraints:
+    - Target DB must be empty
+    - Table load order is determined by FK dependency graph
+    - Binary COPY used by default; CSV fallback for USER-DEFINED types
+    - Partitioned tables and PostGIS are known gaps, not yet supported
+  Test data lives in testdata/; Go tests live alongside source in src/
 
 # Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - Keep under one page
+    - Non-goals section is required
+  tasks:
+    - Each task must be completable in a single session
+    - Validation tasks (Docker, test suite) must always be the last group
