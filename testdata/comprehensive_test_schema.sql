@@ -580,4 +580,56 @@ CREATE TABLE entity_type_b (
 ) INHERITS (base_entity);
 
 
+-- =============================================================
+-- SECOND SCHEMA: app
+--
+-- Most tables above live in the default `public` schema.
+-- A non-trivial real-world database places application tables
+-- in a dedicated schema. The restore tool must correctly handle
+-- schema-qualified names (schema.table) in DAG ordering, type
+-- mapping, and COPY targets — both schemas must be covered.
+-- =============================================================
+CREATE SCHEMA app;
+
+-- Standalone table in app schema, uses custom types from public
+CREATE TABLE app.users (
+    id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    name       TEXT        NOT NULL,
+    email      email_address NOT NULL,
+    status     status_enum   NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Cross-schema FK: app.orders → app.users AND → public.parents
+CREATE TABLE app.orders (
+    id          BIGSERIAL   PRIMARY KEY,
+    user_id     UUID        NOT NULL REFERENCES app.users (id) ON DELETE CASCADE,
+    parent_id   BIGINT      REFERENCES public.parents (id) ON DELETE SET NULL,
+    amount      NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
+    region      region_enum,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Simple key-value settings table in app schema
+CREATE TABLE app.settings (
+    key        TEXT  PRIMARY KEY,
+    value      JSONB NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Cross-schema view joining app and public tables
+CREATE VIEW app.user_order_summary AS
+SELECT
+    u.id         AS user_id,
+    u.name       AS user_name,
+    u.email,
+    o.id         AS order_id,
+    o.amount,
+    p.name       AS parent_name
+FROM app.orders o
+JOIN app.users  u ON u.id = o.user_id
+LEFT JOIN public.parents p ON p.id = o.parent_id;
+
+
 COMMIT;

@@ -58,6 +58,10 @@ Extensions needed: `postgis`, `hstore`, `uuid-ossp`, `pg_trgm`, `btree_gist`, `b
 **Decision:** Include `geometry(Point, 4326)`, `geography(Polygon, 4326)`, and a generic `geometry` column.
 **Rationale:** The CLAUDE.md notes PostGIS support is limited; this gives a concrete target to test against.
 
+### Schema namespacing
+**Decision:** Place most tables in the `public` schema (the common default) and a meaningful subset in a second schema named `app`. Include at least one cross-schema foreign key (`app` table referencing a `public` table) and a cross-schema view.
+**Rationale:** AWS RDS exports include the schema name in table metadata; the restore tool must correctly resolve `schema.table` qualified names in the DAG ordering, type mapping, and COPY target. Covering both `public` and a non-public schema is the minimum needed to expose any schema-qualification bugs. `app` is chosen as a name that mirrors common real-world practice (e.g., application tables separated from shared/reference data in `public`).
+
 ### Naming convention
 **Decision:** All table names use `snake_case`; types use `snake_case`; partitions are named `<parent>_<discriminator>`.
 **Rationale:** Consistent with the existing test database conventions in the codebase.

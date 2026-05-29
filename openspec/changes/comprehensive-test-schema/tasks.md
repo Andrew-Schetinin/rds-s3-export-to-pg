@@ -91,9 +91,17 @@
 
 - [x] 14.1 Create `base_entity` parent table and two child tables (`entity_type_a`, `entity_type_b`) using `INHERITS (base_entity)`
 
-## 15. Validation
+## 15. Schema Namespacing
 
-- [x] 15.1 Start a Docker container using `postgis/postgis:16-3.4` (PostgreSQL 16 + PostGIS), create a fresh database, apply `testdata/comprehensive_test_schema.sql` with `psql -f`, and confirm zero errors
-- [x] 15.2 Repeat 15.1 using `postgis/postgis:17-3.5` (PostgreSQL 17) to confirm compatibility across the target version range
-- [x] 15.3 Run the restore tool's existing test suite (`cd src && go test -v ./...`) and confirm no regressions
-- [x] 15.4 Compare the schema's types and features against `src/target/field_mapper.go` and document all gaps as findings (types and patterns the tool does not yet support)
+- [x] 15.1 Add `CREATE SCHEMA app` to the SQL file (before any objects that use it)
+- [x] 15.2 Create `app.users` table with a UUID PK, name, email (email_address domain), status (status_enum), and timestamps
+- [x] 15.3 Create `app.orders` table with a BIGSERIAL PK, FK to `app.users`, FK to `public.parents` (cross-schema), amount (NUMERIC), and created_at
+- [x] 15.4 Create `app.settings` table as a simple key-value store with TEXT key and JSONB value
+- [x] 15.5 Create a cross-schema view `app.user_order_summary` joining `app.orders` and `public.parents`
+
+## 16. Validation
+
+- [x] 16.1 Start a Docker container using `postgis/postgis:16-3.4` (PostgreSQL 16 + PostGIS), create a fresh database, apply `testdata/comprehensive_test_schema.sql` with `psql -f`, and confirm zero errors
+- [x] 16.2 Repeat 16.1 using `postgis/postgis:17-3.5` (PostgreSQL 17) to confirm compatibility across the target version range
+- [x] 16.3 Run the restore tool's existing test suite (`cd src && go test -v ./...`) and confirm no regressions
+- [x] 16.4 Compare the schema's types and features against `src/target/field_mapper.go` and document all gaps as findings (types and patterns the tool does not yet support)
