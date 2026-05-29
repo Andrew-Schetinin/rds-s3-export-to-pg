@@ -20,7 +20,7 @@ The tool's type mapping, constraint handling, and data loading logic need to be 
 
 ### New Capabilities
 
-- `comprehensive-test-schema`: An SQL DDL file that exercises the full breadth of AWS-RDS-supported PostgreSQL features, serving as the canonical reference for what the restore tool must eventually support. It defines the target, not what is currently supported.
+- `test-schema`: An SQL DDL file that exercises the full breadth of AWS-RDS-supported PostgreSQL features, serving as the canonical reference for what the restore tool must eventually support. It defines the target, not what is currently supported.
 
 ### Modified Capabilities
 
