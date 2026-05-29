@@ -59,7 +59,7 @@ contains any of these columns will cause the tool to panic at runtime.
 |-----------------|-----------------------|
 | POINT           | `point`               |
 | LINE            | `line`                |
-| LSEG            | `lseg`               |
+| LSEG            | `lseg`                |
 | BOX             | `box`                 |
 | PATH            | `path`                |
 | POLYGON         | `polygon`             |
@@ -76,6 +76,17 @@ contains any of these columns will cause the tool to panic at runtime.
 | TSTZRANGE       | `tstzrange`           |
 | DATERANGE       | `daterange`           |
 | float8_range    | `USER-DEFINED`        |
+
+### Multirange Types (PG 14+)
+
+| PostgreSQL type   | Expected OriginalType   |
+|-------------------|-------------------------|
+| INT4MULTIRANGE    | `int4multirange`        |
+| INT8MULTIRANGE    | `int8multirange`        |
+| NUMMULTIRANGE     | `nummultirange`         |
+| TSMULTIRANGE      | `tsmultirange`          |
+| TSTZMULTIRANGE    | `tstzmultirange`        |
+| DATEMULTIRANGE    | `datemultirange`        |
 
 ### USER-DEFINED Types (partial support)
 
@@ -106,3 +117,4 @@ These are not type-mapper issues but architectural gaps in the tool:
 | Exclusion constraints    | Likely works | Constraint type doesn't affect data loading           |
 | Materialized views       | N/A       | Not a table; has no Parquet export                        |
 | Sequences (standalone)   | N/A       | Not a table; sequences reset separately                   |
+| Schema-qualified names   | Unknown   | Tool uses `schema.table` format in DAG and COPY targets; `app` schema tables exercise this path but correct behavior is untested end-to-end |

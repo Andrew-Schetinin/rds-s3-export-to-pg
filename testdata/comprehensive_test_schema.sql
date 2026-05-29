@@ -157,6 +157,14 @@ CREATE TABLE all_scalar_types (
     col_tstzrange     TSTZRANGE,
     col_daterange     DATERANGE,
 
+    -- Built-in multirange types (PG 14+)
+    col_int4multirange  INT4MULTIRANGE,
+    col_int8multirange  INT8MULTIRANGE,
+    col_nummultirange   NUMMULTIRANGE,
+    col_tsmultirange    TSMULTIRANGE,
+    col_tstzmultirange  TSTZMULTIRANGE,
+    col_datemultirange  DATEMULTIRANGE,
+
     -- Array types
     col_int_array     INTEGER[],
     col_text_array    TEXT[],
@@ -217,10 +225,11 @@ CREATE TABLE key_value_store (
 -- =============================================================
 
 -- SMALLSERIAL / SERIAL / BIGSERIAL
+-- PK on id_bigserial: SMALLSERIAL maxes at 32767 and is unsuitable as a PK.
 CREATE TABLE serial_examples (
-    id_smallserial SMALLSERIAL PRIMARY KEY,
+    id_smallserial SMALLSERIAL,
     id_serial      SERIAL,
-    id_bigserial   BIGSERIAL,
+    id_bigserial   BIGSERIAL PRIMARY KEY,
     label          TEXT
 );
 
@@ -536,6 +545,9 @@ CREATE TRIGGER trg_parents_audit_update
     AFTER UPDATE ON parents
     FOR EACH ROW EXECUTE FUNCTION fn_audit_parent_update();
 
+-- BEFORE INSERT OR UPDATE: maintain updated_at on app.users and app.settings
+-- (fn_set_updated_at is generic; triggers defined after the app schema tables below)
+
 
 -- =============================================================
 -- SCALAR FUNCTION
@@ -617,6 +629,21 @@ CREATE TABLE app.settings (
     value      JSONB NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Indexes on app schema tables (exercises schema-qualified index handling)
+CREATE INDEX idx_app_orders_user_id   ON app.orders (user_id);
+CREATE INDEX idx_app_orders_parent_id ON app.orders (parent_id);
+CREATE INDEX idx_app_users_email      ON app.users  (email);
+
+-- Triggers on app schema tables (fn_set_updated_at defined in public schema,
+-- callable cross-schema because search_path includes public)
+CREATE TRIGGER trg_app_users_set_updated_at
+    BEFORE INSERT OR UPDATE ON app.users
+    FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+CREATE TRIGGER trg_app_settings_set_updated_at
+    BEFORE INSERT OR UPDATE ON app.settings
+    FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
 -- Cross-schema view joining app and public tables
 CREATE VIEW app.user_order_summary AS
