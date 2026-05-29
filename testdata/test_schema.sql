@@ -659,4 +659,16 @@ JOIN app.users  u ON u.id = o.user_id
 LEFT JOIN public.parents p ON p.id = o.parent_id;
 
 
+-- =============================================================
+-- QUOTED-IDENTIFIER TABLE
+-- Name and column names contain spaces, requiring double-quoting.
+-- Tests that the restore tool handles PostgreSQL quoted identifiers.
+-- =============================================================
+CREATE TABLE "quoted table name" (
+    "id col"          BIGSERIAL PRIMARY KEY,
+    "col with spaces" TEXT,
+    "another col"     INTEGER
+);
+
+
 COMMIT;
