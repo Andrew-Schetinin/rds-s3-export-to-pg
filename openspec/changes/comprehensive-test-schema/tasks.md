@@ -1,99 +1,99 @@
 ## 1. Research and Planning
 
-- [ ] 1.1 Research the full set of PostgreSQL data types exported by AWS RDS Parquet snapshots; the schema should cover all of them regardless of whether `src/target/field_mapper.go` currently handles them
-- [ ] 1.2 Research which PostgreSQL extensions are available on AWS RDS (PostGIS, HSTORE, uuid-ossp, pg_trgm, btree_gist, btree_gin, etc.) and document required extensions in a comment block at the top of the SQL file
-- [ ] 1.3 Identify any AWS RDS PostgreSQL restrictions that affect DDL (e.g., superuser-only features, unsupported extensions) and document exclusions
+- [x] 1.1 Research the full set of PostgreSQL data types exported by AWS RDS Parquet snapshots; the schema should cover all of them regardless of whether `src/target/field_mapper.go` currently handles them
+- [x] 1.2 Research which PostgreSQL extensions are available on AWS RDS (PostGIS, HSTORE, uuid-ossp, pg_trgm, btree_gist, btree_gin, etc.) and document required extensions in a comment block at the top of the SQL file
+- [x] 1.3 Identify any AWS RDS PostgreSQL restrictions that affect DDL (e.g., superuser-only features, unsupported extensions) and document exclusions
 
 ## 2. File Scaffold
 
-- [ ] 2.1 Create `testdata/` directory at the repository root if it does not exist
-- [ ] 2.2 Create `testdata/comprehensive_test_schema.sql` with a `BEGIN` / `COMMIT` wrapper and a `CREATE EXTENSION IF NOT EXISTS` block for all required extensions
+- [x] 2.1 Create `testdata/` directory at the repository root if it does not exist
+- [x] 2.2 Create `testdata/comprehensive_test_schema.sql` with a `BEGIN` / `COMMIT` wrapper and a `CREATE EXTENSION IF NOT EXISTS` block for all required extensions
 
 ## 3. Custom Types
 
-- [ ] 3.1 Add `CREATE TYPE ... AS ENUM` for at least two enum types (e.g., `status_enum`, `region_enum`)
-- [ ] 3.2 Add `CREATE TYPE ... AS` composite type (e.g., `address_type` with street, city, country fields)
-- [ ] 3.3 Add `CREATE DOMAIN` type (e.g., `positive_integer` as `INTEGER CHECK (VALUE > 0)`)
-- [ ] 3.4 Add a custom range type using `CREATE TYPE ... AS RANGE`
+- [x] 3.1 Add `CREATE TYPE ... AS ENUM` for at least two enum types (e.g., `status_enum`, `region_enum`)
+- [x] 3.2 Add `CREATE TYPE ... AS` composite type (e.g., `address_type` with street, city, country fields)
+- [x] 3.3 Add `CREATE DOMAIN` type (e.g., `positive_integer` as `INTEGER CHECK (VALUE > 0)`)
+- [x] 3.4 Add a custom range type using `CREATE TYPE ... AS RANGE`
 
 ## 4. Standalone Sequence
 
-- [ ] 4.1 Add `CREATE SEQUENCE` with a custom increment/start for use as a `DEFAULT nextval(...)` column
+- [x] 4.1 Add `CREATE SEQUENCE` with a custom increment/start for use as a `DEFAULT nextval(...)` column
 
 ## 5. Core Tables with Full Scalar Type Coverage
 
-- [ ] 5.1 Create `all_scalar_types` table covering: `SMALLINT`, `INTEGER`, `BIGINT`, `NUMERIC(18,4)`, `DECIMAL`, `REAL`, `DOUBLE PRECISION`, `CHAR(10)`, `VARCHAR(255)`, `TEXT`, `BYTEA`, `BOOLEAN`
-- [ ] 5.2 Add temporal columns to `all_scalar_types`: `DATE`, `TIME`, `TIMETZ`, `TIMESTAMP`, `TIMESTAMPTZ`, `INTERVAL`
-- [ ] 5.3 Add network/misc columns to `all_scalar_types`: `UUID`, `XML`, `JSON`, `JSONB`, `TSVECTOR`, `TSQUERY`, `BIT(8)`, `VARBIT(16)`, `MONEY`, `MACADDR`, `MACADDR8`, `INET`, `CIDR`
-- [ ] 5.4 Add geometric columns to `all_scalar_types`: `POINT`, `LINE`, `LSEG`, `BOX`, `PATH`, `POLYGON`, `CIRCLE`
-- [ ] 5.5 Add range columns to `all_scalar_types`: `INT4RANGE`, `INT8RANGE`, `NUMRANGE`, `TSRANGE`, `TSTZRANGE`, `DATERANGE`
-- [ ] 5.6 Add array columns to `all_scalar_types`: `INTEGER[]`, `TEXT[]`, `UUID[]`, `JSONB[]`, `NUMERIC[]`
-- [ ] 5.7 Add columns using custom types in `all_scalar_types` or a companion table: enum, composite, domain, custom range
+- [x] 5.1 Create `all_scalar_types` table covering: `SMALLINT`, `INTEGER`, `BIGINT`, `NUMERIC(18,4)`, `DECIMAL`, `REAL`, `DOUBLE PRECISION`, `CHAR(10)`, `VARCHAR(255)`, `TEXT`, `BYTEA`, `BOOLEAN`
+- [x] 5.2 Add temporal columns to `all_scalar_types`: `DATE`, `TIME`, `TIMETZ`, `TIMESTAMP`, `TIMESTAMPTZ`, `INTERVAL`
+- [x] 5.3 Add network/misc columns to `all_scalar_types`: `UUID`, `XML`, `JSON`, `JSONB`, `TSVECTOR`, `TSQUERY`, `BIT(8)`, `VARBIT(16)`, `MONEY`, `MACADDR`, `MACADDR8`, `INET`, `CIDR`
+- [x] 5.4 Add geometric columns to `all_scalar_types`: `POINT`, `LINE`, `LSEG`, `BOX`, `PATH`, `POLYGON`, `CIRCLE`
+- [x] 5.5 Add range columns to `all_scalar_types`: `INT4RANGE`, `INT8RANGE`, `NUMRANGE`, `TSRANGE`, `TSTZRANGE`, `DATERANGE`
+- [x] 5.6 Add array columns to `all_scalar_types`: `INTEGER[]`, `TEXT[]`, `UUID[]`, `JSONB[]`, `NUMERIC[]`
+- [x] 5.7 Add columns using custom types in `all_scalar_types` or a companion table: enum, composite, domain, custom range
 
 ## 6. PostGIS and HSTORE Tables
 
-- [ ] 6.1 Create `spatial_features` table with columns: `geometry(Point, 4326)`, `geography(Polygon, 4326)`, `geometry` (untyped), `geography` (untyped)
-- [ ] 6.2 Create `key_value_store` table with an `hstore` column
+- [x] 6.1 Create `spatial_features` table with columns: `geometry(Point, 4326)`, `geography(Polygon, 4326)`, `geometry` (untyped), `geography` (untyped)
+- [x] 6.2 Create `key_value_store` table with an `hstore` column
 
 ## 7. Auto-increment Patterns
 
-- [ ] 7.1 Create `serial_examples` table with `SMALLSERIAL`, `SERIAL`, and `BIGSERIAL` columns
-- [ ] 7.2 Create `identity_examples` table with `GENERATED ALWAYS AS IDENTITY` and `GENERATED BY DEFAULT AS IDENTITY` columns (different sequences, custom start/increment)
-- [ ] 7.3 Create a table using the standalone sequence from task 4.1 as its PK default
+- [x] 7.1 Create `serial_examples` table with `SMALLSERIAL`, `SERIAL`, and `BIGSERIAL` columns
+- [x] 7.2 Create `identity_examples` table with `GENERATED ALWAYS AS IDENTITY` and `GENERATED BY DEFAULT AS IDENTITY` columns (different sequences, custom start/increment)
+- [x] 7.3 Create a table using the standalone sequence from task 4.1 as its PK default
 
 ## 8. Relationship Patterns
 
-- [ ] 8.1 Create `parents` table (one-to-many root) and `children` table with FK to `parents`
-- [ ] 8.2 Create `profiles` table with a unique FK to `parents` demonstrating one-to-one
-- [ ] 8.3 Create `tags` table and `parent_tags` join table demonstrating many-to-many
-- [ ] 8.4 Create `categories` table with a self-referential FK (`parent_id` → `categories.id`)
-- [ ] 8.5 Create `node_a` and `node_b` tables with deferred circular FKs (`DEFERRABLE INITIALLY DEFERRED`) between them
+- [x] 8.1 Create `parents` table (one-to-many root) and `children` table with FK to `parents`
+- [x] 8.2 Create `profiles` table with a unique FK to `parents` demonstrating one-to-one
+- [x] 8.3 Create `tags` table and `parent_tags` join table demonstrating many-to-many
+- [x] 8.4 Create `categories` table with a self-referential FK (`parent_id` → `categories.id`)
+- [x] 8.5 Create `node_a` and `node_b` tables with deferred circular FKs (`DEFERRABLE INITIALLY DEFERRED`) between them
 
 ## 9. Partitioned Tables
 
-- [ ] 9.1 Create `events` range-partitioned table (partitioned by `event_date DATE`) with at least two date-range partitions and a default partition
-- [ ] 9.2 Create `regional_data` list-partitioned table (partitioned by `region TEXT`) with at least two list partitions and a default partition
-- [ ] 9.3 Create `sharded_records` hash-partitioned table (partitioned by `id`) with at least four hash partitions
-- [ ] 9.4 Create `sub_partitioned` table partitioned by range then sub-partitioned by hash (at least two range partitions each with two hash sub-partitions)
+- [x] 9.1 Create `events` range-partitioned table (partitioned by `event_date DATE`) with at least two date-range partitions and a default partition
+- [x] 9.2 Create `regional_data` list-partitioned table (partitioned by `region TEXT`) with at least two list partitions and a default partition
+- [x] 9.3 Create `sharded_records` hash-partitioned table (partitioned by `id`) with at least four hash partitions
+- [x] 9.4 Create `sub_partitioned` table partitioned by range then sub-partitioned by hash (at least two range partitions each with two hash sub-partitions)
 
 ## 10. Indexes
 
-- [ ] 10.1 Add B-tree index (default) on a frequently-queried column
-- [ ] 10.2 Add Hash index on a UUID column
-- [ ] 10.3 Add GIN index on a JSONB column and on an array column
-- [ ] 10.4 Add GiST index on a geometry column and on a range column
-- [ ] 10.5 Add SP-GiST index on an INET or POINT column
-- [ ] 10.6 Add BRIN index on a timestamp column in a large append-only-style table
-- [ ] 10.7 Add a partial index (e.g., `WHERE status = 'active'`)
-- [ ] 10.8 Add an expression index (e.g., `LOWER(email)`)
+- [x] 10.1 Add B-tree index (default) on a frequently-queried column
+- [x] 10.2 Add Hash index on a UUID column
+- [x] 10.3 Add GIN index on a JSONB column and on an array column
+- [x] 10.4 Add GiST index on a geometry column and on a range column
+- [x] 10.5 Add SP-GiST index on an INET or POINT column
+- [x] 10.6 Add BRIN index on a timestamp column in a large append-only-style table
+- [x] 10.7 Add a partial index (e.g., `WHERE status = 'active'`)
+- [x] 10.8 Add an expression index (e.g., `LOWER(email)`)
 
 ## 11. Constraints
 
-- [ ] 11.1 Add CHECK constraints (e.g., positive amount, non-empty string)
-- [ ] 11.2 Add EXCLUSION constraint using GiST (e.g., no overlapping date ranges per entity)
-- [ ] 11.3 Add composite UNIQUE constraint across multiple columns
-- [ ] 11.4 Add DEFAULT value expressions (constants, `NOW()`, `gen_random_uuid()`)
-- [ ] 11.5 Verify at least one DEFERRABLE FK exists (covered by task 8.5)
+- [x] 11.1 Add CHECK constraints (e.g., positive amount, non-empty string)
+- [x] 11.2 Add EXCLUSION constraint using GiST (e.g., no overlapping date ranges per entity)
+- [x] 11.3 Add composite UNIQUE constraint across multiple columns
+- [x] 11.4 Add DEFAULT value expressions (constants, `NOW()`, `gen_random_uuid()`)
+- [x] 11.5 Verify at least one DEFERRABLE FK exists (covered by task 8.5)
 
 ## 12. Views and Materialized Views
 
-- [ ] 12.1 Create a regular `VIEW` joining two tables
-- [ ] 12.2 Create a `MATERIALIZED VIEW` with a UNIQUE index to allow `REFRESH CONCURRENTLY`
+- [x] 12.1 Create a regular `VIEW` joining two tables
+- [x] 12.2 Create a `MATERIALIZED VIEW` with a UNIQUE index to allow `REFRESH CONCURRENTLY`
 
 ## 13. Triggers and Functions
 
-- [ ] 13.1 Create a trigger function (e.g., auto-set `updated_at`) and attach as `BEFORE INSERT OR UPDATE` trigger on one table
-- [ ] 13.2 Create an `AFTER UPDATE` trigger on another table (e.g., audit log insert)
-- [ ] 13.3 Create a `CREATE FUNCTION` returning a scalar value (e.g., compute age from DOB)
-- [ ] 13.4 Create a `CREATE PROCEDURE` (e.g., batch-update records)
+- [x] 13.1 Create a trigger function (e.g., auto-set `updated_at`) and attach as `BEFORE INSERT OR UPDATE` trigger on one table
+- [x] 13.2 Create an `AFTER UPDATE` trigger on another table (e.g., audit log insert)
+- [x] 13.3 Create a `CREATE FUNCTION` returning a scalar value (e.g., compute age from DOB)
+- [x] 13.4 Create a `CREATE PROCEDURE` (e.g., batch-update records)
 
 ## 14. Table Inheritance
 
-- [ ] 14.1 Create `base_entity` parent table and two child tables (`entity_type_a`, `entity_type_b`) using `INHERITS (base_entity)`
+- [x] 14.1 Create `base_entity` parent table and two child tables (`entity_type_a`, `entity_type_b`) using `INHERITS (base_entity)`
 
 ## 15. Validation
 
-- [ ] 15.1 Start a Docker container using `postgis/postgis:16-3.4` (PostgreSQL 16 + PostGIS), create a fresh database, apply `testdata/comprehensive_test_schema.sql` with `psql -f`, and confirm zero errors
-- [ ] 15.2 Repeat 15.1 using `postgis/postgis:17-3.5` (PostgreSQL 17) to confirm compatibility across the target version range
-- [ ] 15.3 Run the restore tool's existing test suite (`cd src && go test -v ./...`) and confirm no regressions
-- [ ] 15.4 Compare the schema's types and features against `src/target/field_mapper.go` and document all gaps as findings (types and patterns the tool does not yet support)
+- [x] 15.1 Start a Docker container using `postgis/postgis:16-3.4` (PostgreSQL 16 + PostGIS), create a fresh database, apply `testdata/comprehensive_test_schema.sql` with `psql -f`, and confirm zero errors
+- [x] 15.2 Repeat 15.1 using `postgis/postgis:17-3.5` (PostgreSQL 17) to confirm compatibility across the target version range
+- [x] 15.3 Run the restore tool's existing test suite (`cd src && go test -v ./...`) and confirm no regressions
+- [x] 15.4 Compare the schema's types and features against `src/target/field_mapper.go` and document all gaps as findings (types and patterns the tool does not yet support)
