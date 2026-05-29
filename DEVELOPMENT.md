@@ -33,7 +33,7 @@ go test -v ./...                                      # all tests
 go test -v -skip "TestCreateTestDatabase" ./...       # skip database-dependent tests (used in CI)
 ```
 
-Tests that interact with PostgreSQL require a local server on `localhost:5432` with the `postgres` user. Create the file `src/.test_config.yaml` (gitignored) with the password:
+Go tests that interact with PostgreSQL require a local server on `localhost:5432` with the `postgres` user. Create the file `src/.test_config.yaml` (gitignored) with the password:
 
 ```yaml
 password: YOUR_PASSWORD
@@ -43,6 +43,36 @@ Use an empty string if the user has no password:
 
 ```yaml
 password: ""
+```
+
+## Testdata SQL Files (Docker)
+
+The `testdata/` directory contains three SQL files that must be applied in order:
+
+| File | Purpose |
+|------|---------|
+| `test_schema.sql` | Complete PostgreSQL schema (enums, tables, partitions, extensions, …) |
+| `test_data.sql`   | Seed data for every table including edge-case values |
+| `test_validate.sql` | Validation oracle — asserts expected data is present |
+
+Use the helper script to run the full cycle in a temporary Docker container (no local PostgreSQL needed):
+
+```bash
+./testdata/docker_test.sh        # PostgreSQL 16 (default)
+./testdata/docker_test.sh 14     # PostgreSQL 14
+./testdata/docker_test.sh 15     # PostgreSQL 15
+./testdata/docker_test.sh 17     # PostgreSQL 17
+```
+
+The script starts a `postgis/postgis` container, runs all three files in order with `psql`, checks exit codes at each step, then removes the container (the image is kept). It exits non-zero on any failure.
+
+Required images (pull once per machine):
+
+```bash
+docker pull postgis/postgis:16-3.4   # default — already bundled in dev environment
+docker pull postgis/postgis:17-3.5   # optional
+docker pull postgis/postgis:15-3.4   # optional
+docker pull postgis/postgis:14-3.4   # optional
 ```
 
 If the `postgres` role does not exist on your local installation, create it:
