@@ -300,6 +300,12 @@ DO $$ BEGIN
         WHERE col_numeric = 'NaN'::numeric
     ) >= 1,
         'col_numeric must have at least one NaN row';
+
+    ASSERT (
+        SELECT COUNT(*) FROM all_scalar_types
+        WHERE col_decimal = 'NaN'::decimal
+    ) >= 1,
+        'col_decimal must have at least one NaN row';
 END $$;
 
 

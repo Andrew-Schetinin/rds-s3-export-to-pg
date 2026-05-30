@@ -291,9 +291,9 @@ VALUES ('Infinity'::real, 'Infinity'::double precision, 'positive infinity');
 INSERT INTO all_scalar_types (col_real, col_double, col_label)
 VALUES ('-Infinity'::real, '-Infinity'::double precision, 'negative infinity');
 
--- 3.4 NaN for real, double precision, and numeric
-INSERT INTO all_scalar_types (col_real, col_double, col_numeric, col_label)
-VALUES ('NaN'::real, 'NaN'::double precision, 'NaN'::numeric, 'nan');
+-- 3.4 NaN for real, double precision, numeric, and decimal
+INSERT INTO all_scalar_types (col_real, col_double, col_numeric, col_decimal, col_label)
+VALUES ('NaN'::real, 'NaN'::double precision, 'NaN'::numeric, 'NaN'::decimal, 'nan');
 
 -- 3.5 Long text: col_text exceeds 65,535 bytes
 INSERT INTO all_scalar_types (col_text, col_label)
