@@ -1,8 +1,13 @@
 # test-validate Specification
 
 ## Purpose
-TBD - created by archiving change populate-test-data. Update Purpose after archive.
+The validation SQL script is critical for ensuring that the tool actually supports 
+all PostgreSQL features and edge cases.
+It can be used for both unit-testing and as a post-restore acceptance test.
+It must be comprehensive, representative, and easy to maintain.
+
 ## Requirements
+
 ### Requirement: Validation oracle file exists and is runnable after seeding
 The project SHALL provide `testdata/test_validate.sql` that can be applied via `psql -f` after the schema and seed files, completing without error. The file SHALL use anonymous PL/pgSQL `DO $$ BEGIN ASSERT ..., '<message>'; END $$;` blocks to assert specific known values and counts.
 

@@ -1,8 +1,11 @@
 # test-data Specification
 
 ## Purpose
-TBD - created by archiving change populate-test-data. Update Purpose after archive.
+Test data is critical for ensuring that the tool can support all PostgreSQL features and edge cases. 
+It must be comprehensive, representative, and easy to maintain.
+
 ## Requirements
+
 ### Requirement: Seed file exists and is loadable after the schema
 The project SHALL provide `testdata/test_data.sql` that can be applied to a database that already has the comprehensive schema loaded, using `psql -f` without errors.
 
