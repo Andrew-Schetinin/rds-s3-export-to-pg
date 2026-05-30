@@ -37,7 +37,7 @@ cd src && golangci-lint run ./...                            # lint
 
 Go database tests require a local PostgreSQL instance and `src/.test_config.yaml` — see DEVELOPMENT.md.
 
-**PostgreSQL access:** There is no local PostgreSQL server available. Always use Docker for any database operations (running SQL files, manual queries, etc.). The images `postgis/postgis:16-3.4` and `postgis/postgis:17-3.5` are already available locally. Use `docker run` + `docker exec` or `./testdata/docker_test.sh` — never attempt to connect with a bare `psql` command.
+**PostgreSQL access:** There is no local PostgreSQL server available. Always use Docker for any database operations (running SQL files, manual queries, etc.). Use `docker run` + `docker exec` or `./testdata/docker_test.sh` (supports PostgreSQL 14–17; images are pulled automatically on first use) — never attempt to connect with a bare `psql` command.
 
 ## Architecture Overview
 

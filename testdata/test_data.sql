@@ -31,6 +31,8 @@
 --        combining chars), TIMESTAMPTZ rows with multiple UTC offsets
 -- =============================================================
 
+\set ON_ERROR_STOP on
+
 
 -- =============================================================
 -- Section 1: Independent tables (no foreign keys)

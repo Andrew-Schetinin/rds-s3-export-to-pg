@@ -49,7 +49,7 @@ The validate file SHALL assert that FK relationships are satisfied: child rows r
 - **THEN** it passes
 
 #### Scenario: Circular FK cross-reference is intact
-- **WHEN** the ASSERT `(SELECT COUNT(*) FROM node_a a JOIN node_b b ON a.ref_b = b.id) >= 1` is evaluated
+- **WHEN** the ASSERT `(SELECT COUNT(*) FROM node_a a JOIN node_b b ON a.node_b_id = b.id) >= 1` is evaluated
 - **THEN** it passes
 
 ### Requirement: Validation covers custom type columns
@@ -102,6 +102,10 @@ The validate file SHALL assert the presence of `Infinity`, `-Infinity`, and `NaN
 
 #### Scenario: NaN numeric present
 - **WHEN** the ASSERT `(SELECT COUNT(*) FROM all_scalar_types WHERE col_numeric = 'NaN'::numeric) >= 1` is evaluated
+- **THEN** it passes
+
+#### Scenario: NaN decimal present
+- **WHEN** the ASSERT `(SELECT COUNT(*) FROM all_scalar_types WHERE col_decimal = 'NaN'::decimal) >= 1` is evaluated
 - **THEN** it passes
 
 ### Requirement: Validation covers long text

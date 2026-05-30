@@ -65,7 +65,7 @@ The seed file SHALL insert at least one non-empty array value for every array-ty
 - **THEN** every array column returns a length ≥ 1
 
 ### Requirement: NULL values are explicitly represented
-The seed file SHALL include at least one row in `all_scalar_types` where every nullable column is set to NULL, and at least one additional row in `all_scalar_types` where every nullable column carries a non-NULL value — so that both the NULL and non-NULL paths are covered for every column.
+The seed file SHALL include at least one row in `all_scalar_types` where every nullable column **without a DEFAULT** is set to NULL (columns with DEFAULT expressions such as `col_amount`, `col_uid`, `col_created_at`, and `col_updated_at` will receive their defaults), and at least one additional row in `all_scalar_types` where every nullable column carries a non-NULL value — so that both the NULL and non-NULL paths are covered for every column.
 
 #### Scenario: All-NULL row
 - **WHEN** a row is selected from `all_scalar_types` where only `id` is non-NULL

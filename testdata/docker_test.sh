@@ -18,9 +18,8 @@
 #   ./testdata/docker_test.sh 17    # PostgreSQL 17
 #
 # REQUIREMENTS:
-#   Docker must be running. The target image must be available
-#   locally. To pull an image:
-#     docker pull postgis/postgis:16-3.4
+#   Docker must be running. Images are pulled automatically on
+#   first use if not already present locally.
 #
 # EXIT CODES:
 #   0   All steps passed.

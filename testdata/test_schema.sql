@@ -22,6 +22,8 @@
 --   CREATE EXTENSION ... (as rds_superuser, no special parameter group needed)
 -- =============================================================
 
+\set ON_ERROR_STOP on
+
 BEGIN;
 
 
