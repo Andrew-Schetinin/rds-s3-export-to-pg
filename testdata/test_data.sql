@@ -311,7 +311,7 @@ VALUES ('{{1,2},{3,4}}'::integer[], '2d integer array');
 INSERT INTO all_scalar_types (col_text, col_label)
 VALUES ('Hello 😀🌍', 'emoji text');
 
--- 3.8 CJK text
+-- 3.8b CJK text
 INSERT INTO all_scalar_types (col_text, col_label)
 VALUES ('日本語 中文 한국어', 'cjk text');
 
@@ -319,7 +319,7 @@ VALUES ('日本語 中文 한국어', 'cjk text');
 INSERT INTO all_scalar_types (col_text, col_label)
 VALUES ('مرحبا بالعالم', 'rtl arabic');
 
--- 3.9 Combining characters: café stored in NFD (base e + U+0301 combining acute accent)
+-- 3.9b Combining characters: café stored in NFD (base e + U+0301 combining acute accent)
 INSERT INTO all_scalar_types (col_text, col_label)
 VALUES (E'café', 'combining accent nfd');
 
