@@ -41,9 +41,9 @@ The Docker images are `postgis/postgis:{15,16}-3.4`, `postgis/postgis:17-3.5`, a
 
 ### 3. Trigger filtering for PRs (skip drafts)
 
-**Decision:** In `go.yml`, keep `pull_request` triggers but add `if: github.event.pull_request.draft == false` on the matrix job (not the workflow level).
+**Decision:** In `go.yml`, keep `pull_request` triggers but add `if: github.event_name != 'pull_request' || !github.event.pull_request.draft` on the matrix job (not the workflow level).
 
-**Rationale:** Job-level conditions preserve the standard workflow activation while cheaply skipping the expensive Docker work for draft PRs. The existing Go build job can still run on drafts for fast feedback.
+**Rationale:** Job-level conditions preserve the standard workflow activation while cheaply skipping the expensive Docker work for draft PRs. The existing Go build job can still run on drafts for fast feedback. Note: `github.event.pull_request.draft == false` is unsafe — the `pull_request` property is absent on `push` events, making the expression evaluate to empty string and skipping the job on push-to-`main`. The negated form `!github.event.pull_request.draft` avoids this: on a `push` event the outer `github.event_name != 'pull_request'` short-circuits to `true`.
 
 ### 4. Tag push handled by `release.yml` only
 

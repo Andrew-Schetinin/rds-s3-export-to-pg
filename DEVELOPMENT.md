@@ -45,6 +45,12 @@ Use an empty string if the user has no password:
 password: ""
 ```
 
+If the `postgres` role does not exist on your local installation, create it:
+
+```sql
+CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE INHERIT NOREPLICATION;
+```
+
 ## Testdata SQL Files (Docker)
 
 The `testdata/` directory contains three SQL files that must be applied in order:
@@ -82,12 +88,6 @@ In practice this means the four most recent non-EOL major versions that AWS RDS 
 - [Available PostGIS Docker images](https://hub.docker.com/r/postgis/postgis/tags)
 
 **When to update the matrix:** When a new PostgreSQL major version becomes available on AWS RDS and has a corresponding `postgis/postgis` Docker image, add it to `testdata/docker_test.sh` (new `case` entry) and to the `pg-version` matrix in `.github/workflows/test-postgres-matrix.yml`. Drop the oldest version when AWS RDS deprecates it or it passes upstream EOL, whichever comes first. Document the change in this section and in `CLAUDE.md`.
-
-If the `postgres` role does not exist on your local installation, create it:
-
-```sql
-CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE INHERIT NOREPLICATION;
-```
 
 ## Dependency management
 
