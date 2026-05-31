@@ -3,7 +3,8 @@ name: PostgreSQL Matrix Test
 on:
   workflow_call:
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   test-postgres-matrix:
