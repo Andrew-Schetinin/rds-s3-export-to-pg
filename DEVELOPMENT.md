@@ -59,21 +59,29 @@ Use the helper script to run the full cycle in a temporary Docker container (no 
 
 ```bash
 ./testdata/docker_test.sh        # PostgreSQL 16 (default)
-./testdata/docker_test.sh 14     # PostgreSQL 14
 ./testdata/docker_test.sh 15     # PostgreSQL 15
 ./testdata/docker_test.sh 17     # PostgreSQL 17
+./testdata/docker_test.sh 18     # PostgreSQL 18
 ```
 
-The script starts a `postgis/postgis` container, runs all three files in order with `psql`, checks exit codes at each step, then removes the container (the image is kept). It exits non-zero on any failure.
+The script starts a `postgis/postgis` container, runs all three files in order with `psql`, checks exit codes at each step, then removes the container (the image is kept). It exits non-zero on any failure. Images are pulled automatically on first use.
 
-Required images (pull once per machine):
+## PostgreSQL Version Policy
 
-```bash
-docker pull postgis/postgis:16-3.4   # default — already bundled in dev environment
-docker pull postgis/postgis:17-3.5   # optional
-docker pull postgis/postgis:15-3.4   # optional
-docker pull postgis/postgis:14-3.4   # optional
-```
+The project tests against PostgreSQL major versions **15, 16, 17, and 18**. These are selected using the following criteria (all three must be satisfied):
+
+1. **Supported by AWS RDS** — this tool exists to restore data from AWS RDS Parquet exports, so testing against versions RDS doesn't offer is meaningless
+2. **Not yet past upstream EOL** — versions past their PostgreSQL community end-of-life date are excluded
+3. **Available as a `postgis/postgis` Docker image** — required for the local and CI test scripts
+
+In practice this means the four most recent non-EOL major versions that AWS RDS has adopted. PG 14 is excluded as it approaches EOL in November 2026.
+
+**References:**
+- [AWS RDS for PostgreSQL release calendar](https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html)
+- [PostgreSQL upstream EOL schedule](https://www.postgresql.org/support/versioning/)
+- [Available PostGIS Docker images](https://hub.docker.com/r/postgis/postgis/tags)
+
+**When to update the matrix:** When a new PostgreSQL major version becomes available on AWS RDS and has a corresponding `postgis/postgis` Docker image, add it to `testdata/docker_test.sh` (new `case` entry) and to the `pg-version` matrix in `.github/workflows/test-postgres-matrix.yml`. Drop the oldest version when AWS RDS deprecates it or it passes upstream EOL, whichever comes first. Document the change in this section and in `CLAUDE.md`.
 
 If the `postgres` role does not exist on your local installation, create it:
 

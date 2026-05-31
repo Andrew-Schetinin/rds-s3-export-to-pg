@@ -9,6 +9,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -32,3 +36,7 @@ jobs:
     - name: Test
       working-directory: ./src
       run:  go test -v -skip "TestCreateTestDatabase" ./...
+
+  test-postgres-matrix:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    uses: ./.github/workflows/test-postgres-matrix.yml

@@ -10,12 +10,12 @@
 #   ./testdata/docker_test.sh [PG_VERSION]
 #
 # ARGUMENTS:
-#   PG_VERSION   PostgreSQL major version: 14, 15, 16, or 17.
+#   PG_VERSION   PostgreSQL major version: 15, 16, 17, or 18.
 #                Defaults to 16.
 #
 # EXAMPLES:
 #   ./testdata/docker_test.sh       # PostgreSQL 16
-#   ./testdata/docker_test.sh 17    # PostgreSQL 17
+#   ./testdata/docker_test.sh 18    # PostgreSQL 18
 #
 # REQUIREMENTS:
 #   Docker must be running. Images are pulled automatically on
@@ -33,13 +33,13 @@ set -euo pipefail
 PG_VERSION="${1:-16}"
 
 case "$PG_VERSION" in
-    14) IMAGE="postgis/postgis:14-3.4" ;;
     15) IMAGE="postgis/postgis:15-3.4" ;;
     16) IMAGE="postgis/postgis:16-3.4" ;;
     17) IMAGE="postgis/postgis:17-3.5" ;;
+    18) IMAGE="postgis/postgis:18-3.5" ;;
     *)
         printf 'ERROR: unsupported PostgreSQL version "%s".\n' "$PG_VERSION" >&2
-        printf '       Supported values: 14, 15, 16, 17\n' >&2
+        printf '       Supported values: 15, 16, 17, 18\n' >&2
         exit 1
         ;;
 esac
@@ -76,6 +76,7 @@ printf '[1/5] Starting container %s\n' "$CONTAINER"
 docker run -d --name "$CONTAINER" \
     -e "POSTGRES_PASSWORD=$PG_PASSWORD" \
     -e "POSTGRES_DB=$DB_NAME" \
+    --tmpfs /var/lib/postgresql/data:rw,size=256m \
     "$IMAGE" >/dev/null
 
 # Step 2: wait for PostgreSQL to accept connections
