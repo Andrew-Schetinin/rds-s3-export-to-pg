@@ -51,11 +51,11 @@ The Docker images are `postgis/postgis:{15,16}-3.4`, `postgis/postgis:17-3.5`, a
 
 **Rationale:** Adding a tag trigger to `go.yml` would create a duplicate matrix run every time a tag is pushed (once from `go.yml`, once from `release.yml`). Keeping it in `release.yml` only avoids wasted minutes.
 
-### 5. Go build and PG matrix run in parallel
+### 5. Go build and PG matrix run in parallel; release.yml duplicates the Go build job
 
-**Decision:** The Go build/unit-test job and the PostgreSQL matrix job run concurrently in `go.yml`. Neither has `needs` pointing at the other.
+**Decision:** In `go.yml`, the Go build/unit-test job and the PostgreSQL matrix job run concurrently — neither has `needs` pointing at the other. In `release.yml`, a dedicated `go-build` job (checkout → setup-go → `go build` → unit tests) runs in parallel with the `test-postgres-matrix` call; the GoReleaser job declares `needs: [go-build, test-postgres-matrix]`.
 
-**Rationale:** The two jobs are fully independent — Go tests do not require a running PostgreSQL instance. Running them in parallel minimises wall-clock feedback time for developers. The release gate (`needs: [go-build, test-postgres-matrix]`) enforces that both must pass before any distribution is published, regardless of execution order.
+**Rationale:** GitHub Actions cannot express a `needs` dependency on a job in a *different* workflow. Since `go.yml` does not trigger on tag pushes (Decision 4), the Go build result from a prior CI run is not available to `release.yml`. Duplicating the build job in `release.yml` is the only correct way to gate GoReleaser on both checks. The duplication is small (four steps, same action versions already in use) and eliminates the risk of releasing binaries that fail to compile or unit-test.
 
 ### 6. Docker availability on `ubuntu-latest`
 
@@ -83,6 +83,24 @@ GitHub-hosted `ubuntu-latest` runners include Docker Engine pre-installed. `dock
 **Rationale:** Mounting the PostgreSQL data directory as an in-memory tmpfs eliminates disk I/O during container initialisation and SQL execution. The test data is tiny (well under 10 MB); 256 MB is a safe ceiling. The optimisation applies to both local runs and CI, reducing startup time measurably on cold runners.
 
 **Note:** Do not add `noexec` to the tmpfs options — it can interfere with PostGIS extension loading in certain configurations.
+
+### 9. Reusable workflow declares minimal permissions
+
+**Decision:** `.github/workflows/test-postgres-matrix.yml` declares `permissions: {}` at the workflow level.
+
+**Rationale:** GitHub Actions reusable workflows inherit the caller's permission set by default. When called from `release.yml` (which holds `permissions: contents: write`), the matrix jobs would otherwise run with write access to the repository — entirely unnecessary for a Docker-only test. Declaring `permissions: {}` limits the blast radius if a test script or Docker image is ever compromised.
+
+### 10. Matrix jobs carry a hard timeout
+
+**Decision:** The matrix job in the reusable workflow declares `timeout-minutes: 10`.
+
+**Rationale:** If PostgreSQL fails to start silently (e.g., Docker image corruption or runner resource exhaustion), `pg_isready` will loop indefinitely. Without a timeout, the job would hold a runner for GitHub's default 6 hours. Ten minutes is several times the expected ~1 min per version and is a safe upper bound.
+
+### 11. go.yml cancels redundant in-progress runs
+
+**Decision:** Add a top-level `concurrency` block to `go.yml` with `group: ${{ github.workflow }}-${{ github.ref }}` and `cancel-in-progress: true`.
+
+**Rationale:** Rapid commits to a PR would otherwise queue multiple parallel matrix runs, each consuming 4× CI minutes. Cancelling the superseded run on the same ref saves minutes and reduces queue depth. `release.yml` is exempt — tag pushes are unique by construction and there is no meaningful "superseded" run to cancel.
 
 ## Risks / Trade-offs
 

@@ -22,10 +22,12 @@ The existing CI pipeline only runs Go unit tests — it never exercises the full
 
 ## Impact
 
-- `.github/workflows/test-postgres-matrix.yml` — new reusable workflow
-- `.github/workflows/go.yml` — add matrix job call
-- `.github/workflows/release.yml` — add `needs: test-matrix` dependency
+- `.github/workflows/test-postgres-matrix.yml` — new reusable workflow (with `permissions: {}` and `timeout-minutes: 10`)
+- `.github/workflows/go.yml` — add matrix job call and concurrency/cancel-in-progress group
+- `.github/workflows/release.yml` — add self-contained `go-build` job and `test-postgres-matrix` call; gate GoReleaser on both
 - `testdata/docker_test.sh` — add PG 18 support, drop PG 14, add tmpfs mount for speed
+- `DEVELOPMENT.md` — add version-policy section; update existing Docker usage examples and `docker pull` commands
+- `CLAUDE.md` — update supported PostgreSQL version range from 14–17 to 15–18
 - No changes to Go source code or SQL test files
 
 ## Non-Goals

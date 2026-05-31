@@ -22,6 +22,10 @@ The CI pipeline SHALL include a job that runs `./testdata/docker_test.sh` for ea
 - **WHEN** `./testdata/docker_test.sh <version>` exits non-zero for any version
 - **THEN** the matrix job reports failure; remaining versions continue running (`fail-fast: false`)
 
+#### Scenario: Hung container does not block runners indefinitely
+- **WHEN** the PostgreSQL container fails to start or become ready within the expected time
+- **THEN** the matrix job times out and fails within 10 minutes (enforced by `timeout-minutes: 10` on the job)
+
 #### Scenario: Matrix skipped on draft PRs
 - **WHEN** a pull request targeting `main` is in draft state
 - **THEN** the PostgreSQL matrix job is skipped; the Go build job still runs
@@ -77,7 +81,7 @@ The CI pipeline SHALL trigger jobs according to the following rules, with no dup
 - **THEN** `go.yml` does NOT trigger the PostgreSQL matrix (it runs once from `release.yml`)
 
 ### Requirement: Release gated on all CI jobs
-The release workflow SHALL only invoke GoReleaser after both the Go build job and the PostgreSQL matrix job have passed successfully.
+The release workflow SHALL only invoke GoReleaser after both a Go build job and the PostgreSQL matrix job — both defined within `release.yml` — have passed successfully.
 
 #### Scenario: All jobs pass on tag push
 - **WHEN** a `v*` tag is pushed AND both the Go build and PG matrix jobs succeed
@@ -86,3 +90,21 @@ The release workflow SHALL only invoke GoReleaser after both the Go build job an
 #### Scenario: Any job fails on tag push
 - **WHEN** a `v*` tag is pushed AND either the Go build or the PG matrix job fails
 - **THEN** GoReleaser does NOT run and the release workflow fails
+
+#### Scenario: Go build job is self-contained within release workflow
+- **WHEN** a `v*` tag is pushed
+- **THEN** `release.yml` runs its own Go build job; it does NOT depend on `go.yml`, which is not triggered by tag pushes
+
+### Requirement: Reusable workflow runs with minimal permissions
+The reusable workflow (`.github/workflows/test-postgres-matrix.yml`) SHALL declare `permissions: {}` at the workflow level to prevent inheriting elevated permissions from its callers.
+
+#### Scenario: Called from release workflow with write permissions
+- **WHEN** `release.yml` (which has `permissions: contents: write`) calls the reusable workflow
+- **THEN** the matrix jobs run with no repository permissions, not with the caller's write access
+
+### Requirement: Redundant PR runs are cancelled
+`go.yml` SHALL configure a concurrency group keyed on workflow name and ref so that a new push to an open PR cancels any in-progress run for the same PR.
+
+#### Scenario: Rapid commits to a PR
+- **WHEN** a developer pushes multiple commits in quick succession to a PR branch
+- **THEN** only the latest run proceeds; older in-progress runs for the same ref are cancelled
