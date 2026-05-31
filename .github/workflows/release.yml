@@ -9,7 +9,30 @@ permissions:
   contents: write
 
 jobs:
+  go-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: ./src/go.mod
+          cache-dependency-path: ./src/go.sum
+
+      - name: Build
+        working-directory: ./src
+        run: go build -v ./...
+
+      - name: Test
+        working-directory: ./src
+        run: go test -v -skip "TestCreateTestDatabase" ./...
+
+  test-postgres-matrix:
+    uses: ./.github/workflows/test-postgres-matrix.yml
+
   release:
+    needs: [go-build, test-postgres-matrix]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

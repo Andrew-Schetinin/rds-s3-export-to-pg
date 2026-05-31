@@ -32,12 +32,12 @@ cd src && go test -v ./...                                   # all tests
 cd src && go test -v -skip "TestCreateTestDatabase" ./...   # skip DB tests (CI)
 cd src && golangci-lint run ./...                            # lint
 ./testdata/docker_test.sh                                    # schema+seed+validate via Docker (default: PG 16)
-./testdata/docker_test.sh 17                                 # same, PostgreSQL 17
+./testdata/docker_test.sh 18                                 # same, PostgreSQL 18
 ```
 
 Go database tests require a local PostgreSQL instance and `src/.test_config.yaml` — see DEVELOPMENT.md.
 
-**PostgreSQL access:** There is no local PostgreSQL server available. Always use Docker for any database operations (running SQL files, manual queries, etc.). Use `docker run` + `docker exec` or `./testdata/docker_test.sh` (supports PostgreSQL 14–17; images are pulled automatically on first use) — never attempt to connect with a bare `psql` command.
+**PostgreSQL access:** There is no local PostgreSQL server available. Always use Docker for any database operations (running SQL files, manual queries, etc.). Use `docker run` + `docker exec` or `./testdata/docker_test.sh` (supports PostgreSQL 15–18; images are pulled automatically on first use) — never attempt to connect with a bare `psql` command.
 
 ## Architecture Overview
 
