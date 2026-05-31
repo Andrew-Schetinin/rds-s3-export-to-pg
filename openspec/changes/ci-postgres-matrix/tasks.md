@@ -13,8 +13,7 @@
 
 - [ ] 3.1 In `.github/workflows/go.yml`, add a `test-postgres-matrix` job that calls the reusable workflow via `uses: ./.github/workflows/test-postgres-matrix.yml`
 - [ ] 3.2 Add `if: github.event_name != 'pull_request' || !github.event.pull_request.draft` condition to the matrix job so it skips for draft PRs but still runs on push-to-`main` (using `github.event.pull_request.draft == false` is unsafe: the property is absent on `push` events, making the expression evaluate to empty-string, which may skip the job)
-- [ ] 3.3 Confirm `go.yml` does NOT have a tag trigger (matrix on tags is handled by `release.yml` only)
-- [ ] 3.4 Add a `concurrency` group to `go.yml` (`group: ${{ github.workflow }}-${{ github.ref }}`, `cancel-in-progress: true`) so rapid commits to a PR cancel redundant in-progress runs
+- [ ] 3.3 Add a `concurrency` group to `go.yml` (`group: ${{ github.workflow }}-${{ github.ref }}`, `cancel-in-progress: true`) so rapid commits to a PR cancel redundant in-progress runs
 
 ## 4. Update Release Workflow
 
@@ -25,14 +24,13 @@
 ## 5. Documentation
 
 - [ ] 5.1 In `DEVELOPMENT.md`: (a) add a section documenting the supported PostgreSQL versions (15–18), the AWS-RDS-first selection rationale, links to https://docs.aws.amazon.com/AmazonRDS/latest/PostgreSQLReleaseNotes/postgresql-release-calendar.html, https://www.postgresql.org/support/versioning/, and https://hub.docker.com/r/postgis/postgis/tags, and instructions for updating the matrix when versions change; (b) update the existing `Testdata SQL Files (Docker)` section to remove PG 14 usage examples and `docker pull` commands, and add PG 18 equivalents
-- [ ] 5.2 In the PR description, document the manual branch protection step required after merge (add the `test-postgres-matrix` check names to the required checks for `main`)
-- [ ] 5.3 In `CLAUDE.md`, update the supported PostgreSQL version range from "14–17" to "15–18" in the build/test commands section and any other references
+- [ ] 5.2 In `CLAUDE.md`, update the supported PostgreSQL version range from "14–17" to "15–18" in the build/test commands section and any other references
 
 ## 6. Validation
 
 - [ ] 6.1 Open a non-draft PR from this branch and confirm the matrix job runs for all 4 PG versions (15–18) and passes
 - [ ] 6.2 Confirm draft PR skips the matrix job (check Actions tab after converting the PR to draft)
 - [ ] 6.3 After merge to main, confirm the matrix job runs on the push-to-main trigger
-- [ ] 6.4 Configure branch protection: add the `test-postgres-matrix` check names as required checks for `main` in GitHub repo settings
+- [ ] 6.4 Configure branch protection: add the `test-postgres-matrix` check names as required checks for `main` in GitHub repo settings (manual step — GitHub only lists check names it has seen run against a PR targeting `main`, so this must be done after the first successful run post-merge)
 - [ ] 6.5 Verify tag-push routing: after pushing a `v*` test tag (or inspecting the Actions tab), confirm that `go.yml` does NOT trigger a PostgreSQL matrix run and that `release.yml` triggers exactly one matrix run
 - [ ] 6.6 Verify release gate: confirm that if any matrix job fails (e.g., by temporarily breaking `docker_test.sh` on a test branch), the GoReleaser job in `release.yml` does not run
