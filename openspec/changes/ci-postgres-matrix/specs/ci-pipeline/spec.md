@@ -1,4 +1,6 @@
-## ADDED Requirements
+## Existing Requirements
+
+> These requirements describe pre-existing behavior that this change does not modify. They are included here to document the full expected state of the CI pipeline.
 
 ### Requirement: Go build and unit test job
 The CI pipeline SHALL include a job that compiles the Go source and runs all unit tests (excluding database integration tests) on every push to `main` and every pull request targeting `main`.
@@ -10,6 +12,9 @@ The CI pipeline SHALL include a job that compiles the Go source and runs all uni
 #### Scenario: Build or test failure blocks merge
 - **WHEN** the Go build or unit tests fail on a PR
 - **THEN** the PR cannot be merged until the failure is resolved
+- **Prerequisite:** Branch protection must be configured to require this check (see "Documentation Updates" requirement and Task 6.4 — manual step after first successful run on `main`).
+
+## New Requirements
 
 ### Requirement: PostgreSQL matrix job
 The CI pipeline SHALL include a job that runs `./testdata/docker_test.sh` for each supported PostgreSQL major version (15, 16, 17, 18) as parallel sub-jobs within a single matrix.
@@ -21,6 +26,7 @@ The CI pipeline SHALL include a job that runs `./testdata/docker_test.sh` for ea
 #### Scenario: Any version fails
 - **WHEN** `./testdata/docker_test.sh <version>` exits non-zero for any version
 - **THEN** the matrix job reports failure; remaining versions continue running (`fail-fast: false`)
+- **Prerequisite:** Branch protection must be configured to require the matrix check names as required checks for `main` (see "Documentation Updates" requirement and Task 6.4 — manual step after first successful run on `main`).
 
 #### Scenario: Hung container does not block runners indefinitely
 - **WHEN** the PostgreSQL container fails to start or become ready within the expected time
@@ -108,3 +114,21 @@ The reusable workflow (`.github/workflows/test-postgres-matrix.yml`) SHALL decla
 #### Scenario: Rapid commits to a PR
 - **WHEN** a developer pushes multiple commits in quick succession to a PR branch
 - **THEN** only the latest run proceeds; older in-progress runs for the same ref are cancelled
+
+### Requirement: Documentation updates
+The following documentation files SHALL be updated as part of this change:
+- `DEVELOPMENT.md` — add a PostgreSQL version selection policy section (versions 15–18, AWS-RDS-first rationale, update instructions, and links to the AWS RDS release calendar, upstream EOL schedule, and PostGIS Docker Hub tags); update the Docker usage examples to reflect the new version range (drop PG 14, add PG 18)
+- `CLAUDE.md` — update the supported PostgreSQL version range reference from "14–17" to "15–18"
+- PR description — document the manual branch protection step required after merge (adding `test-postgres-matrix` check names to required checks for `main`)
+
+#### Scenario: Developer looks up supported versions
+- **WHEN** a developer opens `DEVELOPMENT.md` to find which PostgreSQL versions are tested
+- **THEN** they find the current version list (15–18), the selection rationale, the three reference links, and instructions for updating the matrix when versions change
+
+#### Scenario: CLAUDE.md version range is current
+- **WHEN** a developer reads `CLAUDE.md`
+- **THEN** the supported PostgreSQL version range shown in the build/test commands section reads "15–18", not "14–17"
+
+#### Scenario: Branch protection step is discoverable
+- **WHEN** a maintainer merges this PR and needs to configure branch protection
+- **THEN** the PR description contains clear instructions for adding the `test-postgres-matrix` check names as required checks for `main` in GitHub repo settings
