@@ -11,7 +11,7 @@
 --
 -- USAGE (fresh database required — not idempotent):
 --   createdb test_comprehensive
---   psql -d test_comprehensive -f testdata/comprehensive_test_schema.sql
+--   psql -d test_comprehensive -f testdata/test_schema.sql
 --
 -- To reset: dropdb test_comprehensive && createdb test_comprehensive
 --
@@ -21,6 +21,8 @@
 -- On AWS RDS these are enabled via:
 --   CREATE EXTENSION ... (as rds_superuser, no special parameter group needed)
 -- =============================================================
+
+\set ON_ERROR_STOP on
 
 BEGIN;
 
@@ -657,6 +659,18 @@ SELECT
 FROM app.orders o
 JOIN app.users  u ON u.id = o.user_id
 LEFT JOIN public.parents p ON p.id = o.parent_id;
+
+
+-- =============================================================
+-- QUOTED-IDENTIFIER TABLE
+-- Name and column names contain spaces, requiring double-quoting.
+-- Tests that the restore tool handles PostgreSQL quoted identifiers.
+-- =============================================================
+CREATE TABLE "quoted table name" (
+    "id col"          BIGSERIAL PRIMARY KEY,
+    "col with spaces" TEXT,
+    "another col"     INTEGER
+);
 
 
 COMMIT;

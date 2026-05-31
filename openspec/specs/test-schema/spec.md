@@ -1,10 +1,12 @@
-## ADDED Requirements
+## Purpose
 
+Define the structure and content requirements for `testdata/test_schema.sql`, the SQL DDL file used as the test database schema for integration testing of the rds-s3-export-to-pg restore tool.
+## Requirements
 ### Requirement: Schema file exists and is loadable
-The project SHALL provide a single SQL DDL file at `testdata/comprehensive_test_schema.sql` that can be applied to a fresh PostgreSQL database (with PostGIS and HSTORE extensions) using `psql -f` without errors.
+The project SHALL provide a single SQL DDL file at `testdata/test_schema.sql` that can be applied to a fresh PostgreSQL database (with PostGIS and HSTORE extensions) using `psql -f` without errors.
 
 #### Scenario: Clean load
-- **WHEN** `psql -f testdata/comprehensive_test_schema.sql` is run against an empty database with PostGIS and HSTORE available
+- **WHEN** `psql -f testdata/test_schema.sql` is run against an empty database with PostGIS and HSTORE available
 - **THEN** all objects are created without errors and the transaction commits successfully
 
 #### Scenario: Idempotent extension creation
@@ -150,3 +152,15 @@ The schema SHALL include at least one parent table with two child tables using P
 #### Scenario: Inheritance structure
 - **WHEN** `pg_inherits` is queried for the parent table
 - **THEN** at least two child tables are returned
+
+### Requirement: Schema includes a table with quoted-identifier names
+`testdata/test_schema.sql` SHALL define at least one table whose name and at least two of whose column names require double-quoting because they contain spaces (e.g. `"quoted table name"`, `"col with spaces"`). The table SHALL include at least a text column and an integer column, plus a primary key.
+
+#### Scenario: Quoted table is queryable
+- **WHEN** `SELECT * FROM "quoted table name"` is run against the test database after schema load
+- **THEN** the query succeeds and returns the expected columns
+
+#### Scenario: Column names contain spaces
+- **WHEN** `SELECT column_name FROM information_schema.columns WHERE table_name = 'quoted table name'` is run
+- **THEN** at least two returned column names contain a space character
+
