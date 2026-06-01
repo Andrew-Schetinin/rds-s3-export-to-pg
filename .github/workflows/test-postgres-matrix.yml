@@ -1,0 +1,22 @@
+name: PostgreSQL Matrix Test
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test-postgres-matrix:
+    name: pg-${{ matrix.pg-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        pg-version: [15, 16, 17, 18]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run Docker round-trip test
+        run: ./testdata/docker_test.sh ${{ matrix.pg-version }}
