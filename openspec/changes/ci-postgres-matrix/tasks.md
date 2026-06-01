@@ -1,6 +1,6 @@
 ## 1. Update docker_test.sh
 
-- [x] 1.1 In `testdata/docker_test.sh`, add a `18)` case and remove the `14)` case; before writing any image tag, verify all four tags exist on Docker Hub: `postgis/postgis:15-3.4`, `postgis/postgis:16-3.4`, `postgis/postgis:17-3.5`, `postgis/postgis:18-3.5`
+- [x] 1.1 In `testdata/docker_test.sh`, add a `18)` case and remove the `14)` case; before writing any image tag, verify all four tags exist on Docker Hub: `postgis/postgis:15-3.4`, `postgis/postgis:16-3.4`, `postgis/postgis:17-3.5`, `postgis/postgis:18-3.6`
 - [x] 1.2 Add `--tmpfs /var/lib/postgresql/data:rw,size=256m` to the `docker run` invocation in `testdata/docker_test.sh`; do **not** add `noexec` — it interferes with PostGIS extension loading
 
 ## 2. Reusable Matrix Workflow

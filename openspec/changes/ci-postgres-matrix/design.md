@@ -4,9 +4,11 @@ The project currently has two GitHub Actions workflows:
 - `go.yml` — builds and unit-tests on push to `main` and PRs targeting `main`
 - `release.yml` — runs GoReleaser on `v*` tag pushes
 
-Neither workflow runs the `testdata/docker_test.sh` round-trip tests, so PG-version compatibility regressions are undetected until a developer manually runs the script locally.
+Neither workflow runs the `testdata/docker_test.sh` round-trip tests, 
+so PG-version compatibility regressions are undetected until a developer manually runs the script locally.
 
-The Docker images are `postgis/postgis:{15,16}-3.4`, `postgis/postgis:17-3.5`, and `postgis/postgis:18-3.5` (verify tag at time of implementation). The test script takes ~30–60 s per version; all four can run in parallel, keeping total wall-clock time under 2 minutes.
+The Docker images are `postgis/postgis:{15,16}-3.4`, `postgis/postgis:17-3.5`, and `postgis/postgis:18-3.6`. 
+The test script takes ~30–60 s per version; all four can run in parallel, keeping total wall-clock time under 2 minutes.
 
 ## Goals / Non-Goals
 
