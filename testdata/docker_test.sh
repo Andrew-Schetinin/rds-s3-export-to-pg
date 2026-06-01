@@ -79,7 +79,6 @@ printf '=== PostgreSQL %s test (%s) ===\n\n' "$PG_VERSION" "$IMAGE"
 printf '[1/5] Starting container %s\n' "$CONTAINER"
 docker run -d --name "$CONTAINER" \
     -e "POSTGRES_PASSWORD=$PG_PASSWORD" \
-    -e "POSTGRES_DB=$DB_NAME" \
     "$IMAGE" >/dev/null
 
 # Step 2: wait for PostgreSQL to accept connections
@@ -95,6 +94,15 @@ while ! docker exec "$CONTAINER" pg_isready -U "$PG_USER" >/dev/null 2>&1; do
     attempt=$((attempt + 1))
 done
 printf ' ready (%ds)\n' "$attempt"
+
+# Create the test database after init scripts have finished running.
+# We do NOT pass POSTGRES_DB to docker run because the postgis/postgis image's
+# 10_postgis.sh init script would install PostGIS into it, and then our schema's
+# CREATE EXTENSION IF NOT EXISTS postgis would hit a duplicate-key error on PG 16+.
+# Creating the database here uses template1 (no PostGIS), so the schema installs
+# it cleanly.
+printf '[  ] Creating database %s\n' "$DB_NAME"
+docker exec "$CONTAINER" createdb -U "$PG_USER" "$DB_NAME"
 
 # Copy SQL files into the container once (avoids repeated docker cp overhead)
 printf '[  ] Copying SQL files to container\n'
