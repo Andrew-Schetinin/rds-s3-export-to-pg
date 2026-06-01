@@ -28,7 +28,7 @@
 -- =============================================================
 
 DO $$ BEGIN
-    ASSERT (SELECT COUNT(*) FROM all_scalar_types) <= 1,
+    ASSERT (SELECT COUNT(*) FROM all_scalar_types) >= 1,
         'all_scalar_types must have >= 1 row';
     ASSERT (SELECT COUNT(*) FROM spatial_features) >= 1,
         'spatial_features must have >= 1 row';
