@@ -43,17 +43,16 @@ Planned action items:
 1. (a must) [#1](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/1) - Implement support for partitioned tables (AWS RDS exports ).
 2. (a must) [#2](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/2) - Support additional PostgreSQL data types - for example PostGIS geography.
 3. (nice to have) [#3](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/3) - Implement S3 configurations and loading files from there.
-4. (nice to have) [#6](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/6) - Implement releases' compilation for different platforms
+4. [x] [#6](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/6) - Implement releases' compilation for different platforms
 5. (future) [#4](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/4) - Implement a complete integration test with multiple samples of different data types and PostgreSQL features.
 6. (future) [#5](https://github.com/Andrew-Schetinin/rds-s3-export-to-pg/issues/5) - Implement support for DAG cycles (cycled references between PostgreSQL tables)
 
 ## 1.2. Supported platforms
 
-These are the planned platforms.
-Binaries are not yet built for those platforms.
+These are the planned platforms:
 
-1. MacOS arm64
-2. Ubuntu Linux 22.04 amd64
+1. MacOS arm64 (and maybe amd64)
+2. Linux amd64 (and maybe arm64)
 3. MS Windows amd64
 
 ## 1.3. Usage and command line arguments
